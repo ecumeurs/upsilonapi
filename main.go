@@ -25,6 +25,12 @@ func main() {
 	rev := getGitRevision()
 	logrus.Infof("Starting UpsilonAPI server on :8081 (rev: %s)", rev)
 
+	// @spec-link [[api_go_health_check]]
+	// Health check endpoint (used by Docker healthcheck in CI)
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok", "revision": rev})
+	})
+
 	// Internal Arena Management
 	internal := r.Group("/internal")
 	{
