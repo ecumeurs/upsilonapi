@@ -1,0 +1,84 @@
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+time="2026-04-10T14:14:47Z" level=info msg="Starting UpsilonAPI server on :8081"
+[GIN-debug] POST   /internal/arena/start     --> github.com/ecumeurs/upsilonapi/handler.HandleArenaStart (3 handlers)
+[GIN-debug] POST   /internal/arena/:id/action --> github.com/ecumeurs/upsilonapi/handler.HandleArenaAction (3 handlers)
+[GIN-debug] GET    /v1/match/stats/active    --> github.com/ecumeurs/upsilonapi/handler.HandleGetActiveMatchStats (3 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8081
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=info msg="Actor started" component=actor name=Ruler
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+time="2026-04-10T14:21:06Z" level=info msg="Actor started" component=actor name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg="Starting message queue" component=messagequeue name=Ruler
+time="2026-04-10T14:21:06Z" level=info msg=AddController ControllerID=019d77c4 component=actor message="[R ecd49097]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019d77c4"
+Controller:  019d77c4-608b-71c3-9911-f15cfd340f1a  is now assigned to a player
+time="2026-04-10T14:21:06Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg="Actor started" component=actor name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'SP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'MP', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'Shield', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'IsDying', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'TeamID', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasMoved', using default value"
+time="2026-04-10T14:21:06Z" level=warning msg="entitygenerator: Missing propertyRandomizer for 'HasActed', using default value"
+2026/04/10 14:21:06 [ArenaBridge] Waiting for controller reply (1/2) for match 019d77c4-98c3-73d4-a882-4f575cdf5ef0
+2026/04/10 14:21:06 [ArenaBridge] Received reply from controller for match 019d77c4-98c3-73d4-a882-4f575cdf5ef0 (Error: false)
+2026/04/10 14:21:06 [ArenaBridge] Waiting for controller reply (2/2) for match 019d77c4-98c3-73d4-a882-4f575cdf5ef0
+time="2026-04-10T14:21:06Z" level=info msg="Actor started" component=actor name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg=AddController ControllerID=019d77c4 component=actor message="[R c4800058]" message_type=rulermethods.AddController name=Ruler request_type=message
+Controller:  019d77c4-97d0-714a-a074-2a3dfb4d8dd4  is now assigned to a player
+2026/04/10 14:21:06 [ArenaBridge] Received reply from controller for match 019d77c4-98c3-73d4-a882-4f575cdf5ef0 (Error: false)
+time="2026-04-10T14:21:06Z" level=info msg="Actor started" component=actor name="Controller 019d77c4"
+time="2026-04-10T14:21:06Z" level=info msg="Game started" component=actor message="[R b93ed07c]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg="First entity to play" component=actor entityID=019d77c4 message="[R b93ed07c]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg="HTTPController 019d77c4-608b-71c3-9911-f15cfd340f1a: BattleStart received, notifying BattleReady"
+time="2026-04-10T14:21:06Z" level=info msg="Forwarding event to webhook: rulermethods.BattleStart"
+time="2026-04-10T14:21:06Z" level=info msg="HTTPController 019d77c4-97d0-714a-a074-2a3dfb4d8dd4: BattleStart received, notifying BattleReady"
+time="2026-04-10T14:21:06Z" level=info msg="Forwarding event to webhook: rulermethods.BattleStart"
+[GIN] 2026/04/10 - 14:21:06 | 200 |   1.46ms |             ::1 | POST     "/internal/arena/start"
+time="2026-04-10T14:21:06Z" level=info msg=ControllerBattleReady component=actor message="[R 07bf77f7]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg=ControllerBattleReady component=actor message="[R 819323a2]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg="First entity to play" component=actor entityID=019d77c4 message="[R 819323a2]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-10T14:21:06Z" level=info msg="Forwarding event to webhook: rulermethods.ControllerNextTurn"
