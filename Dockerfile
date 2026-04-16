@@ -2,7 +2,7 @@
 FROM golang:1.25-alpine
 
 # Install build dependencies
-RUN apk add --no-color build-base
+RUN apk add --no-cache build-base curl
 
 # Set working directory to root to maintain workspace structure
 WORKDIR /app
@@ -11,6 +11,7 @@ WORKDIR /app
 COPY go.work go.work.sum ./
 COPY upsilonapi/go.mod upsilonapi/go.su[m] ./upsilonapi/
 COPY upsilonbattle/go.mod upsilonbattle/go.su[m] ./upsilonbattle/
+COPY upsiloncli/go.mod upsiloncli/go.su[m] ./upsiloncli/
 COPY upsilonmapdata/go.mod upsilonmapdata/go.su[m] ./upsilonmapdata/
 COPY upsilonmapmaker/go.mod upsilonmapmaker/go.su[m] ./upsilonmapmaker/
 COPY upsilonserializer/go.mod upsilonserializer/go.su[m] ./upsilonserializer/
@@ -22,8 +23,8 @@ RUN go mod download
 # Copy all source code
 COPY . .
 
-# Build the battle engine
-WORKDIR /app/upsilonbattle
+# Build the battle engine API
+WORKDIR /app/upsilonapi
 RUN go build -o /app/upsilon-engine .
 
 # Final execution
