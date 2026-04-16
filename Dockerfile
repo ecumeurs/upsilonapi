@@ -9,12 +9,12 @@ WORKDIR /app
 
 # Copy go.work and module files for caching
 COPY go.work go.work.sum ./
-COPY upsilonapi/go.mod upsilonapi/go.sum ./upsilonapi/
-COPY upsilonbattle/go.mod upsilonbattle/go.sum ./upsilonbattle/
-COPY upsilonmapdata/go.mod upsilonmapdata/go.sum ./upsilonmapdata/
-COPY upsilonmapmaker/go.mod upsilonmapmaker/go.sum ./upsilonmapmaker/
-COPY upsilonserializer/go.mod upsilonserializer/go.sum ./upsilonserializer/
-COPY upsilontools/go.mod upsilontools/go.sum ./upsilontools/
+COPY upsilonapi/go.mod upsilonapi/go.su[m] ./upsilonapi/
+COPY upsilonbattle/go.mod upsilonbattle/go.su[m] ./upsilonbattle/
+COPY upsilonmapdata/go.mod upsilonmapdata/go.su[m] ./upsilonmapdata/
+COPY upsilonmapmaker/go.mod upsilonmapmaker/go.su[m] ./upsilonmapmaker/
+COPY upsilonserializer/go.mod upsilonserializer/go.su[m] ./upsilonserializer/
+COPY upsilontools/go.mod upsilontools/go.su[m] ./upsilontools/
 
 # Download dependencies
 RUN go mod download
