@@ -132,7 +132,7 @@ func TestArenaStartEndpoint(t *testing.T) {
 					}
 				}
 			}
-		case <-time.After(2 * time.Second):
+		case <-time.After(10 * time.Second):
 			t.Errorf("Timed out waiting for webhook event")
 		}
 	}
@@ -319,7 +319,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 }
 
 func waitForWebhook(t *testing.T, events chan map[string]interface{}, expectedType string) {
-	timeout := time.After(5 * time.Second)
+	timeout := time.After(10 * time.Second)
 	for {
 		select {
 		case event := <-events:

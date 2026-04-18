@@ -88,7 +88,12 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			// this bypass actor's owning resource, we should probably use the AddEntity message instead (doesn't exist yet).
 			battleArena.Ruler.AddEntity(e)
 		}
+	}
 
+	// Start the Ruler actor now that initial configuration is complete.
+	battleArena.Ruler.Start()
+
+	for _, p := range start.Players {
 		if p.IA {
 			ctrl := controllers.NewAggressiveController(uuid.MustParse(p.ID), fmt.Sprintf("AggressiveController-%s", p.ID))
 			ctrl.Start()
