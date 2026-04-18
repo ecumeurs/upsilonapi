@@ -85,7 +85,7 @@ func TestArenaStartEndpoint(t *testing.T) {
 					Position: api.Position{ // note this position is fully arbitrary...
 						X: 5,
 						Y: 0}}},
-			IA: true}}
+			IA: false}}
 
 	reqBody, _ := json.Marshal(api.ArenaStartMessage{
 		RequestID: id,
@@ -196,7 +196,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 					Position: api.Position{
 						X: 1,
 						Y: 1}}},
-			IA: true}}
+			IA: false}}
 
 	// 1. Start Arena
 	reqBody, _ := json.Marshal(api.ArenaStartMessage{
@@ -219,19 +219,24 @@ func TestBattleFullRoundtrip(t *testing.T) {
 	var startResp api.ArenaStartResponseMessage
 	json.Unmarshal(w.Body.Bytes(), &startResp)
 	arenaID := startResp.Data.ArenaID
-	p1ID := players[0].ID
-	p1e1ID := players[0].Entities[0].ID
 	
 	initialStateMarshaled, _ := json.MarshalIndent(startResp.Data.InitialState, "", "  ")
 	log.Printf("GO TEST INITIAL STATE:\n%s", string(initialStateMarshaled))
 
 	// Wait for game.started and turn.started
 	waitForWebhook(t, webhookEvents, "game.started")
-	waitForWebhook(t, webhookEvents, "turn.started")
+	lastEvent := waitForWebhook(t, webhookEvents, "turn.started")
+
+	arenaEvent := lastEvent["data"].(map[string]interface{})
+	boardState := arenaEvent["data"].(map[string]interface{})
+	activePlayerID := boardState["current_player_id"].(string)
+	activeEntityID := boardState["current_entity_id"].(string)
+
+	log.Printf("Executing action sequence for Active Actor: Player=%s, Entity=%s", activePlayerID, activeEntityID)
 
 	// 2. Discover actual positions
-	var p1e1Pos api.Position
-	var p2e1Pos api.Position
+	var activeEntityPos api.Position
+	var foeEntityPos api.Position
 	
 	allEntities := []api.Entity{}
 	for _, p := range startResp.Data.InitialState.Players {
@@ -239,27 +244,26 @@ func TestBattleFullRoundtrip(t *testing.T) {
 	}
 
 	for _, e := range allEntities {
-		if e.ID == p1e1ID {
-			p1e1Pos = e.Position
-		}
-		if e.ID == players[1].Entities[0].ID {
-			p2e1Pos = e.Position
+		if e.ID == activeEntityID {
+			activeEntityPos = e.Position
+		} else {
+			foeEntityPos = e.Position
 		}
 	}
-	log.Printf("P1E1 actual pos: %+v, P2E1 actual pos: %+v", p1e1Pos, p2e1Pos)
+	log.Printf("Active Pos: %+v, Foe Pos: %+v", activeEntityPos, foeEntityPos)
 
-	// 3. Move P1E1 to an adjacent tile (e.g., X+1)
-	targetMove := api.Position{X: p1e1Pos.X + 1, Y: p1e1Pos.Y}
-	if targetMove.X >= 10 { // boundary check for the 10x10 map used in tests
-		targetMove.X = p1e1Pos.X - 1
+	// 3. Move Active Entity to an adjacent tile (e.g., X+1)
+	targetMove := api.Position{X: activeEntityPos.X + 1, Y: activeEntityPos.Y}
+	if targetMove.X >= 10 { 
+		targetMove.X = activeEntityPos.X - 1
 	}
 
 	log.Printf("Executing MOVE action to %+v...", targetMove)
 	moveReqBody, _ := json.Marshal(api.ArenaActionMessage{
 		RequestID: uuid.NewString(),
 		Data: api.ArenaActionRequest{
-			PlayerID: p1ID,
-			EntityID: p1e1ID,
+			PlayerID: activePlayerID,
+			EntityID: activeEntityID,
 			Type:     "move",
 			TargetCoords: []api.Position{
 				targetMove,
@@ -274,16 +278,16 @@ func TestBattleFullRoundtrip(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code, "Move action should succeed")
 
-	// 4. Attack P2E1 at its actual position
-	log.Printf("Executing ATTACK action on %+v...", p2e1Pos)
+	// 4. Attack Foe at its actual position
+	log.Printf("Executing ATTACK action on %+v...", foeEntityPos)
 	attackReqBody, _ := json.Marshal(api.ArenaActionMessage{
 		RequestID: uuid.NewString(),
 		Data: api.ArenaActionRequest{
-			PlayerID: p1ID,
-			EntityID: p1e1ID,
+			PlayerID: activePlayerID,
+			EntityID: activeEntityID,
 			Type:     "attack",
 			TargetCoords: []api.Position{
-				p2e1Pos,
+				foeEntityPos,
 			},
 		},
 	})
@@ -293,19 +297,13 @@ func TestBattleFullRoundtrip(t *testing.T) {
 	router.ServeHTTP(w, req)
 	log.Printf("ATTACK status: %d, response: %s", w.Code, w.Body.String())
 
-	// Note: attack might fail with "Out of range" depending on random spawn distance, 
-	// but 200/400 is expected depending on logic.
-	if w.Code != http.StatusOK {
-		log.Printf("Attack failed (likely out of range): %s", w.Body.String())
-	}
-
 	// 5. Pass turn
 	log.Printf("Executing PASS action...")
 	passReqBody, _ := json.Marshal(api.ArenaActionMessage{
 		RequestID: uuid.NewString(),
 		Data: api.ArenaActionRequest{
-			PlayerID: p1ID,
-			EntityID: p1e1ID,
+			PlayerID: activePlayerID,
+			EntityID: activeEntityID,
 			Type:     "pass",
 		},
 	})
@@ -318,7 +316,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 	waitForWebhook(t, webhookEvents, "turn.started")
 }
 
-func waitForWebhook(t *testing.T, events chan map[string]interface{}, expectedType string) {
+func waitForWebhook(t *testing.T, events chan map[string]interface{}, expectedType string) map[string]interface{} {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
@@ -326,11 +324,12 @@ func waitForWebhook(t *testing.T, events chan map[string]interface{}, expectedTy
 			data, ok := event["data"].(map[string]interface{})
 			if ok {
 				if data["event_type"] == expectedType {
-					return
+					return event
 				}
 			}
 		case <-timeout:
 			t.Fatalf("Timed out waiting for webhook event: %s", expectedType)
+			return nil
 		}
 	}
 }

@@ -110,6 +110,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			// We need at least one controller to get the initial state
 			// In the future, we might add multiple based on players payload
 			hc := NewHTTPController(uuid.MustParse(p.ID), matchID, start.CallbackURL)
+			hc.Ruler = battleArena.Ruler
 			hc.Start()
 
 			msg := message.Create(hc, rulermethods.AddController{
