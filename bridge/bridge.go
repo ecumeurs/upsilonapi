@@ -94,41 +94,33 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	battleArena.Ruler.Start()
 
 	for _, p := range start.Players {
+		var ctrl actor.Communication
 		if p.IA {
-			ctrl := controllers.NewAggressiveController(uuid.MustParse(p.ID), fmt.Sprintf("AggressiveController-%s", p.ID))
-			ctrl.Start()
-
-			msg := message.Create(ctrl, rulermethods.AddController{
-				Controller:   ctrl,
-				ControllerID: ctrl.ID,
-			}, nil)
-
-			battleArena.Ruler.SendActor(msg, respChan)
-
+			iac := controllers.NewAggressiveController(uuid.MustParse(p.ID), fmt.Sprintf("AggressiveController-%s", p.ID))
+			iac.Start()
+			ctrl = iac
 		} else {
-
-			// We need at least one controller to get the initial state
-			// In the future, we might add multiple based on players payload
 			hc := NewHTTPController(uuid.MustParse(p.ID), matchID, start.CallbackURL)
 			hc.Ruler = battleArena.Ruler
 			hc.Start()
-
-			msg := message.Create(hc, rulermethods.AddController{
-				Controller:   hc,
-				ControllerID: hc.ID,
-			}, nil)
-
-			battleArena.Ruler.SendActor(msg, respChan)
+			ctrl = hc
 		}
+
+		msg := message.Create(ctrl, rulermethods.AddController{
+			Controller:   ctrl,
+			ControllerID: uuid.MustParse(p.ID),
+		}, rulermethods.AddControllerReply{})
+
+		battleArena.Ruler.SendActor(msg, respChan)
 	}
 
 	for i := 0; i < count; i++ {
-		log.Printf("[ArenaBridge] Waiting for controller reply (%d/%d) for match %s", i+1, count, matchID)
+		log.Printf("[ArenaBridge] Waiting for AddController reply (%d/%d) for match %s", i+1, count, matchID)
 		select {
 		case msg := <-respChan:
-			log.Printf("[ArenaBridge] Received reply from controller for match %s (Error: %v)", matchID, msg.HasError)
-		case <-time.After(10 * time.Second):
-			log.Printf("[ArenaBridge] TIMEOUT waiting for controller reply for match %s", matchID)
+			log.Printf("[ArenaBridge] Received AddController reply for match %s (Error: %v)", matchID, msg.HasError)
+		case <-time.After(5 * time.Second):
+			log.Printf("[ArenaBridge] TIMEOUT waiting for AddController reply for match %s", matchID)
 		}
 	}
 
@@ -215,12 +207,12 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 			ControllerID: uuid.MustParse(req.Data.PlayerID),
 			EntityID:     uuid.MustParse(req.Data.EntityID),
 			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, 1),
-		}, nil), respChan)
+		}, rulermethods.ControllerAttackReply{}), respChan)
 	case "pass":
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
 			ControllerID: uuid.MustParse(req.Data.PlayerID),
 			EntityID:     uuid.MustParse(req.Data.EntityID),
-		}, nil), respChan)
+		}, rulermethods.EndOfTurn{}), respChan)
 	case "move":
 		path := make([]position.Position, len(req.Data.TargetCoords))
 		for i, c := range req.Data.TargetCoords {
@@ -230,7 +222,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 			ControllerID: uuid.MustParse(req.Data.PlayerID),
 			EntityID:     uuid.MustParse(req.Data.EntityID),
 			Path:         path,
-		}, nil), respChan)
+		}, rulermethods.ControllerMoveReply{}), respChan)
 	case "forfeit":
 		entityID := uuid.Nil
 		if req.Data.EntityID != "" {
@@ -241,7 +233,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		r.SendActor(message.Create(nil, rulermethods.ControllerForfeit{
 			ControllerID: uuid.MustParse(req.Data.PlayerID),
 			EntityID:     entityID,
-		}, nil), respChan)
+		}, rulermethods.ControllerForfeit{}), respChan)
 	default:
 		// Just notify the ruler for now with a generic message if type matches?
 		// Better to implement specific methods
@@ -249,7 +241,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
 			ControllerID: uuid.MustParse(req.Data.PlayerID),
 			EntityID:     uuid.MustParse(req.Data.EntityID),
-		}, nil), respChan)
+		}, rulermethods.EndOfTurn{}), respChan)
 	}
 
 	// Wait for the reply
