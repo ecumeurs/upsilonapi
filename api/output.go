@@ -49,6 +49,7 @@ type Turn struct {
 }
 
 // ActionFeedback provides explicit data about the last tactical action.
+// @spec-link [[api_go_action_feedback]]
 type ActionFeedback struct {
 	Type     string              `json:"type"` // "move", "attack", "pass"
 	ActorID  string              `json:"actor_id"`
