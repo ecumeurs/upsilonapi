@@ -111,10 +111,9 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	case rulermethods.ControllerNextTurn: version = d.Version
 	case rulermethods.BattleStart: version = d.Version
 	case rulermethods.BattleEnd: version = d.Version
+	case rulermethods.ControllerSkillUsed: version = d.Version
 	}
 
-	// @spec-link [[mech_game_state_versioning]]
-	// Optimize: Only fetch board state if we haven't already sent an update for this version/event.
 	// This prevents redundant engine calls when multiple controllers receive the same broadcast.
 	if version > 0 && !Get().TrySendWebhook(hc.MatchID, version, eventName) {
 		return
@@ -127,6 +126,7 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 
 	// @spec-link [[api_go_battle_action]]
 	// Request safe board state from Ruler
+	logrus.Debugf("Requesting board state for %s (%s)", hc.MatchID, eventName)
 	hc.Ruler.SendActor(message.Create(hc.Actor, rulermethods.GetBoardState{
 		ActionContext: &webhookContext{
 			Action:    action,
@@ -135,12 +135,16 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	}, rulermethods.GetBoardStateReply{}), hc.CallbackChan)
 }
 
+
 func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 	reply, ok := ctx.Msg.Content.(rulermethods.GetBoardStateReply)
 	if !ok {
 		logrus.Errorf("HTTPController %s: Received invalid reply type for board state", hc.ID)
 		return
 	}
+
+	logrus.Debugf("Received board state reply for %s", hc.MatchID)
+
 
 	wctx, ok := reply.ActionContext.(*webhookContext)
 	if !ok {

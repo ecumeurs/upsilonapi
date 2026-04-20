@@ -42,8 +42,12 @@ func TestArenaStartEndpoint(t *testing.T) {
 		webhookEvents <- event
 		w.WriteHeader(http.StatusOK)
 	}))
-	defer ts.Close()
-	defer close(webhookEvents)
+	defer func() {
+		// Small delay to ensure any in-flight POSTs from the engine's HTTPController are settled
+		time.Sleep(100 * time.Millisecond)
+		ts.Close()
+		close(webhookEvents)
+	}()
 
 	id := uuid.New().String()
 	mid := uuid.New().String()
@@ -156,8 +160,12 @@ func TestBattleFullRoundtrip(t *testing.T) {
 		webhookEvents <- event
 		w.WriteHeader(http.StatusOK)
 	}))
-	defer ts.Close()
-	defer close(webhookEvents)
+	defer func() {
+		// Small delay to ensure any in-flight POSTs from the engine's HTTPController are settled
+		time.Sleep(100 * time.Millisecond)
+		ts.Close()
+		close(webhookEvents)
+	}()
 
 	id := uuid.New().String()
 	mid := uuid.New().String()
