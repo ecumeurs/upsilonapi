@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonapi/stdmessage"
@@ -23,13 +25,20 @@ type HTTPController struct {
 	*controller.Controller
 	CallbackURL string
 	MatchID     uuid.UUID
+	Players     []api.Player
 }
 
-func NewHTTPController(id uuid.UUID, matchID uuid.UUID, callbackURL string) *HTTPController {
+type webhookContext struct {
+	Action    *api.ActionFeedback
+	EventName string
+}
+
+func NewHTTPController(id uuid.UUID, matchID uuid.UUID, callbackURL string, players []api.Player) *HTTPController {
 	hc := &HTTPController{
 		Controller:  controller.NewController(id),
 		CallbackURL: callbackURL,
 		MatchID:     matchID,
+		Players:     players,
 	}
 
 	// Override or add methods to handle Ruler's broadcasts
@@ -41,6 +50,8 @@ func NewHTTPController(id uuid.UUID, matchID uuid.UUID, callbackURL string) *HTT
 	hc.AddNotificationHandler(rulermethods.ControllerAttacked{}, hc.forwardToWebhook, nil)
 	hc.AddNotificationHandler(rulermethods.ControllerMoved{}, hc.forwardToWebhook, nil)
 	hc.AddNotificationHandler(rulermethods.ControllerPassed{}, hc.forwardToWebhook, nil)
+
+	hc.AddReplyHandler(rulermethods.GetBoardStateReply{}, hc.handleBoardStateReply, nil)
 
 	return hc
 }
@@ -63,7 +74,7 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	case rulermethods.ControllerAttacked:
 		action = &api.ActionFeedback{
 			Type:     "attack",
-			ActorID:  d.Attacker.ID.String(),
+			ActorID:  d.AttackerControllerID.String(),
 			TargetID: d.Entity.ID.String(),
 			Damage:   d.Damage,
 			PrevHP:   d.PrevHP,
@@ -80,25 +91,84 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 			Type:    "pass",
 			ActorID: d.EntityID.String(),
 		}
-	}
-
-	bs, err := Get().GetBoardState(hc.MatchID, action)
-	if err != nil {
-		logrus.Errorf("Failed to get board state for webhook: %v", err)
-		return
+	default:
+		// ISS-057: Log unhandled event types to aid debugging
+		logrus.WithFields(logrus.Fields{
+			"eventType": hc.getEventName(ctx.Msg.TargetMethod),
+			"method":    reflect.TypeOf(ctx.Msg.TargetMethod).String(),
+		}).Debug("Forwarding notification with no specific action feedback")
 	}
 
 	eventName := hc.getEventName(ctx.Msg.TargetMethod)
 
+	// Extract version from notification if available (v2 versioned notifications)
+	var version int64
+	switch d := ctx.Msg.TargetMethod.(type) {
+	case rulermethods.ControllerAttacked: version = d.Version
+	case rulermethods.ControllerMoved: version = d.Version
+	case rulermethods.ControllerPassed: version = d.Version
+	case rulermethods.EntitiesStateChanged: version = d.Version
+	case rulermethods.ControllerNextTurn: version = d.Version
+	case rulermethods.BattleStart: version = d.Version
+	case rulermethods.BattleEnd: version = d.Version
+	}
+
 	// @spec-link [[mech_game_state_versioning]]
-	if !Get().TrySendWebhook(hc.MatchID, bs.Version, eventName) {
-		// Version and event type already sent by another controller belonging to the same match.
+	// Optimize: Only fetch board state if we haven't already sent an update for this version/event.
+	// This prevents redundant engine calls when multiple controllers receive the same broadcast.
+	if version > 0 && !Get().TrySendWebhook(hc.MatchID, version, eventName) {
 		return
 	}
 
+	if hc.Ruler == nil {
+		logrus.Errorf("HTTPController %s: Ruler is nil, cannot get board state", hc.ID)
+		return
+	}
+
+	// @spec-link [[api_go_battle_action]]
+	// Request safe board state from Ruler
+	hc.Ruler.SendActor(message.Create(hc.Actor, rulermethods.GetBoardState{
+		ActionContext: &webhookContext{
+			Action:    action,
+			EventName: eventName,
+		},
+	}, rulermethods.GetBoardStateReply{}), hc.CallbackChan)
+}
+
+func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
+	reply, ok := ctx.Msg.Content.(rulermethods.GetBoardStateReply)
+	if !ok {
+		logrus.Errorf("HTTPController %s: Received invalid reply type for board state", hc.ID)
+		return
+	}
+
+	wctx, ok := reply.ActionContext.(*webhookContext)
+	if !ok {
+		// This reply was not triggered by a tactical event requiring a webhook (e.g. manual sync or concurrent bridge call).
+		// We skip it for the HTTPController as it only needs to relay tactical broadcasts.
+		return
+	}
+
+	// Construct board state from safe data
+	bs := api.NewBoardState(
+		hc.MatchID,
+		reply.Grid,
+		reply.Entities,
+		hc.Players,
+		reply.TurnState,
+		time.Now(),
+		time.Now().Add(30*time.Second),
+		reply.WinnerTeamID,
+		reply.Version,
+		wctx.Action,
+	)
+
+	// Note: TrySendWebhook check was moved to forwardToWebhook for optimization, 
+	// but we kept version tracking logic in the bridge.
+
 	payload := api.ArenaEvent{
 		MatchID:   hc.MatchID.String(),
-		EventType: eventName,
+		EventType: wctx.EventName,
 		Data:      bs,
 		Version:   bs.Version,
 		Timeout:   bs.Timeout,
@@ -142,7 +212,7 @@ func (hc *HTTPController) getEventName(content interface{}) string {
 	case rulermethods.EntitiesStateChanged:
 		return "board.updated"
 	case rulermethods.ControllerAttacked:
-		return "board.updated" // or "attacked"? user says board.update standardized for front usage
+		return "board.updated"
 	case rulermethods.ControllerMoved:
 		return "board.updated"
 	case rulermethods.ControllerPassed:

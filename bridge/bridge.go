@@ -100,7 +100,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			iac.Start()
 			ctrl = iac
 		} else {
-			hc := NewHTTPController(uuid.MustParse(p.ID), matchID, start.CallbackURL)
+			hc := NewHTTPController(uuid.MustParse(p.ID), matchID, start.CallbackURL, start.Players)
 			hc.Ruler = battleArena.Ruler
 			hc.Start()
 			ctrl = hc
@@ -146,14 +146,36 @@ func (b *ArenaBridge) GetBoardState(matchID uuid.UUID, action *api.ActionFeedbac
 		return api.BoardState{}, fmt.Errorf("arena %s not found", matchID)
 	}
 
-	res := make([]entity.Entity, 0, len(arena.Ruler.GameState.Entities))
-	for _, v := range arena.Ruler.GameState.Entities {
-		res = append(res, v)
+	// Request board state from Ruler via message to avoid data races
+	// @spec-link [[api_go_battle_action]]
+	respChan := make(chan *message.Message, 1)
+	arena.Ruler.SendActor(message.Create(nil, rulermethods.GetBoardState{
+		ActionContext: action,
+	}, rulermethods.GetBoardStateReply{}), respChan)
+
+	select {
+	case res := <-respChan:
+		if res.HasError {
+			return api.BoardState{}, fmt.Errorf("engine error: %s", res.ErrorMessage)
+		}
+		reply := res.TargetMethod.(rulermethods.GetBoardStateReply)
+		players, _ := arena.Metadata["Players"].([]api.Player)
+
+		return api.NewBoardState(
+			matchID,
+			reply.Grid,
+			reply.Entities,
+			players,
+			reply.TurnState,
+			time.Now(),
+			time.Now().Add(30*time.Second),
+			reply.WinnerTeamID,
+			reply.Version,
+			action,
+		), nil
+	case <-time.After(2 * time.Second):
+		return api.BoardState{}, fmt.Errorf("timeout waiting for ruler state")
 	}
-
-	players, _ := arena.Metadata["Players"].([]api.Player)
-
-	return api.NewBoardState(matchID, arena.Ruler.GameState.Grid, res, players, arena.Ruler.GameState.Turner.GetTurnState(), time.Now(), time.Now().Add(30*time.Second), arena.Ruler.GameState.WinnerTeamID, arena.Ruler.GameState.Version, action), nil
 }
 
 type webhookSentKey struct {
