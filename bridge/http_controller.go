@@ -115,7 +115,7 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	}
 
 	// This prevents redundant engine calls when multiple controllers receive the same broadcast.
-	if version > 0 && !Get().TrySendWebhook(hc.MatchID, version, eventName) {
+	if version >= 0 && !Get().TrySendWebhook(hc.MatchID, version, eventName) {
 		return
 	}
 
