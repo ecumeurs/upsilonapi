@@ -17,7 +17,7 @@ import (
 	"github.com/ecumeurs/upsilonbattle/battlearena"
 	"github.com/ecumeurs/upsilonbattle/battlearena/controller/controllers"
 	"github.com/ecumeurs/upsilonbattle/battlearena/entity"
-	"github.com/ecumeurs/upsilonbattle/battlearena/entity/entitygenerator"
+	"github.com/ecumeurs/upsilonbattle/battlearena/property"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
@@ -47,19 +47,19 @@ func Get() *ArenaBridge {
 
 func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.Grid, []entity.Entity, []api.Player, turner.TurnState, int64, error) {
 	if start.MatchID == "" {
-		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("mandatory field match_id is missing")
+		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("mandatory field match_id is missing")
 	}
 	matchID, err := uuid.Parse(start.MatchID)
 	if err != nil {
-		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid match_id: %w", err)
+		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("invalid match_id: %w", err)
 	}
 
 	if start.CallbackURL == "" {
-		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("mandatory field callback_url is missing")
+		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("mandatory field callback_url is missing")
 	}
 
 	if len(start.Players) == 0 {
-		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("arena must have at least one player")
+		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("arena must have at least one player")
 	}
 
 	battleArena := battlearena.NewBattleArena(matchID)
@@ -86,18 +86,18 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	for _, p := range start.Players {
 		playerID, err := uuid.Parse(p.ID)
 		if err != nil {
-			return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid player_id for player %s: %w", p.Nickname, err)
+			return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("invalid player_id for player %s: %w", p.Nickname, err)
 		}
 
 		for _, ee := range p.Entities {
 			entID, err := uuid.Parse(ee.ID)
 			if err != nil {
-				return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
+				return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
 			}
 
 			// CRASH EARLY: Critical stats must be positive
 			if ee.MaxHP <= 0 {
-				return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
+				return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
 			}
 
 			// Clean initialization (no random defaults)
@@ -107,7 +107,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 				Name:         ee.Name,
 				ControllerID: playerID,
 			}
-			e.Properties = make(map[string]any) // Ensure properties map is initialized
+			e.Properties = make(map[string]property.Property) // Ensure properties map is initialized
 
 			e.RepsertPropertyCMaxValue("HP", ee.MaxHP)
 			e.RepsertPropertyCValue("HP", ee.HP)
