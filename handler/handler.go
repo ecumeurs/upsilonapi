@@ -24,8 +24,8 @@ func HandleArenaStart(c *gin.Context) {
 	}
 
 	id, g, entities, players, turner, version, err := bridge.Get().StartArena(req.Data)
-	if (err != nil) {
-		c.JSON(http.StatusInternalServerError, api.NewError(req.RequestID, err.Error()))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError(req.RequestID, err.Error()))
 		return
 	}
 

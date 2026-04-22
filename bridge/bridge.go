@@ -46,7 +46,22 @@ func Get() *ArenaBridge {
 }
 
 func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.Grid, []entity.Entity, []api.Player, turner.TurnState, int64, error) {
-	matchID := uuid.MustParse(start.MatchID)
+	if start.MatchID == "" {
+		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("mandatory field match_id is missing")
+	}
+	matchID, err := uuid.Parse(start.MatchID)
+	if err != nil {
+		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid match_id: %w", err)
+	}
+
+	if start.CallbackURL == "" {
+		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("mandatory field callback_url is missing")
+	}
+
+	if len(start.Players) == 0 {
+		return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("arena must have at least one player")
+	}
+
 	battleArena := battlearena.NewBattleArena(matchID)
 	battleArena.Metadata["CallbackURL"] = start.CallbackURL
 	battleArena.Metadata["Players"] = start.Players
@@ -58,7 +73,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	b.arenas[matchID] = battleArena
 	b.mu.Unlock()
 
-	// this bypass actor's owning resource, we should probably use the SetGrid message instead (doesn't exist yet).
+	// Use default grid for now, but in the future this should be part of the request
 	battleArena.Ruler.SetGrid(gridgenerator.GeneratePlainSquare(10, 10))
 	battleArena.Ruler.SetNbControllers(len(start.Players))
 
@@ -69,13 +84,30 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	count := len(start.Players)
 
 	for _, p := range start.Players {
+		playerID, err := uuid.Parse(p.ID)
+		if err != nil {
+			return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid player_id for player %s: %w", p.Nickname, err)
+		}
 
 		for _, ee := range p.Entities {
-			e := entitygenerator.GenerateRandomEntity()
-			e.Type = entity.Character
-			e.Name = ee.Name
-			e.ID = uuid.MustParse(ee.ID)
-			e.ControllerID = uuid.MustParse(p.ID)
+			entID, err := uuid.Parse(ee.ID)
+			if err != nil {
+				return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
+			}
+
+			// CRASH EARLY: Critical stats must be positive
+			if ee.MaxHP <= 0 {
+				return uuid.Nil, nil, nil, nil, nil, 0, fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
+			}
+
+			// Clean initialization (no random defaults)
+			e := entity.Entity{
+				ID:           entID,
+				Type:         entity.Character,
+				Name:         ee.Name,
+				ControllerID: playerID,
+			}
+			e.Properties = make(map[string]any) // Ensure properties map is initialized
 
 			e.RepsertPropertyCMaxValue("HP", ee.MaxHP)
 			e.RepsertPropertyCValue("HP", ee.HP)
@@ -85,7 +117,6 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			e.RepsertPropertyValue("Defense", ee.Defense)
 			e.RepsertPropertyValue("TeamID", p.Team)
 
-			// this bypass actor's owning resource, we should probably use the AddEntity message instead (doesn't exist yet).
 			battleArena.Ruler.AddEntity(e)
 		}
 	}
@@ -95,12 +126,13 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 
 	for _, p := range start.Players {
 		var ctrl actor.Communication
+		pID := uuid.MustParse(p.ID) // Safe here as we already parsed it above
 		if p.IA {
-			iac := controllers.NewAggressiveController(uuid.MustParse(p.ID), fmt.Sprintf("AggressiveController-%s", p.ID))
+			iac := controllers.NewAggressiveController(pID, fmt.Sprintf("AggressiveController-%s", p.ID))
 			iac.Start()
 			ctrl = iac
 		} else {
-			hc := NewHTTPController(uuid.MustParse(p.ID), matchID, start.CallbackURL, start.Players)
+			hc := NewHTTPController(pID, matchID, start.CallbackURL, start.Players)
 			hc.Ruler = battleArena.Ruler
 			hc.Start()
 			ctrl = hc
@@ -108,7 +140,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 
 		msg := message.Create(ctrl, rulermethods.AddController{
 			Controller:   ctrl,
-			ControllerID: uuid.MustParse(p.ID),
+			ControllerID: pID,
 		}, rulermethods.AddControllerReply{})
 
 		battleArena.Ruler.SendActor(msg, respChan)
@@ -216,6 +248,16 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		return false, "arena not found", nil
 	}
 
+	playerID, err := uuid.Parse(req.Data.PlayerID)
+	if err != nil {
+		return false, fmt.Sprintf("invalid player_id: %v", err), nil
+	}
+
+	entityID, err := uuid.Parse(req.Data.EntityID)
+	if err != nil {
+		return false, fmt.Sprintf("invalid entity_id: %v", err), nil
+	}
+
 	respChan := make(chan *message.Message)
 	defer close(respChan)
 	// Translate HTTP action to Ruler message
@@ -225,35 +267,35 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 
 	switch actionType {
 	case "attack":
+		if len(req.Data.TargetCoords) == 0 {
+			return false, "attack requires target_coords", nil
+		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerAttack{
-			ControllerID: uuid.MustParse(req.Data.PlayerID),
-			EntityID:     uuid.MustParse(req.Data.EntityID),
+			ControllerID: playerID,
+			EntityID:     entityID,
 			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, 1),
 		}, rulermethods.ControllerAttackReply{}), respChan)
 	case "pass":
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
-			ControllerID: uuid.MustParse(req.Data.PlayerID),
-			EntityID:     uuid.MustParse(req.Data.EntityID),
+			ControllerID: playerID,
+			EntityID:     entityID,
 		}, rulermethods.EndOfTurn{}), respChan)
 	case "move":
+		if len(req.Data.TargetCoords) == 0 {
+			return false, "move requires target_coords", nil
+		}
 		path := make([]position.Position, len(req.Data.TargetCoords))
 		for i, c := range req.Data.TargetCoords {
 			path[i] = position.New(c.X, c.Y, 1)
 		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerMove{
-			ControllerID: uuid.MustParse(req.Data.PlayerID),
-			EntityID:     uuid.MustParse(req.Data.EntityID),
+			ControllerID: playerID,
+			EntityID:     entityID,
 			Path:         path,
 		}, rulermethods.ControllerMoveReply{}), respChan)
 	case "forfeit":
-		entityID := uuid.Nil
-		if req.Data.EntityID != "" {
-			if uid, err := uuid.Parse(req.Data.EntityID); err == nil {
-				entityID = uid
-			}
-		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerForfeit{
-			ControllerID: uuid.MustParse(req.Data.PlayerID),
+			ControllerID: playerID,
 			EntityID:     entityID,
 		}, rulermethods.ControllerForfeit{}), respChan)
 	default:
@@ -261,8 +303,8 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		// Better to implement specific methods
 
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
-			ControllerID: uuid.MustParse(req.Data.PlayerID),
-			EntityID:     uuid.MustParse(req.Data.EntityID),
+			ControllerID: playerID,
+			EntityID:     entityID,
 		}, rulermethods.EndOfTurn{}), respChan)
 	}
 
