@@ -68,6 +68,21 @@ func (hc *HTTPController) BattleStart(ctx actor.NotificationContext) {
 	}
 }
 
+func (hc *HTTPController) mapCredits(awards []rulermethods.CreditAward) []api.CreditAward {
+	if len(awards) == 0 {
+		return nil
+	}
+	res := make([]api.CreditAward, len(awards))
+	for i, a := range awards {
+		res[i] = api.CreditAward{
+			PlayerID: a.PlayerID.String(),
+			Amount:   a.Amount,
+			Source:   a.Source,
+		}
+	}
+	return res
+}
+
 func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	var action *api.ActionFeedback
 	switch d := ctx.Msg.TargetMethod.(type) {
@@ -79,6 +94,14 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 			Damage:   d.Damage,
 			PrevHP:   d.PrevHP,
 			NewHP:    d.NewHP,
+			Credits:  hc.mapCredits(d.CreditAwards),
+		}
+	case rulermethods.ControllerSkillUsed:
+		action = &api.ActionFeedback{
+			Type:     "skill",
+			ActorID:  d.EmitterControllerID.String(),
+			TargetID: d.Entity.ID.String(),
+			Credits:  hc.mapCredits(d.CreditAwards),
 		}
 	case rulermethods.ControllerMoved:
 		action = &api.ActionFeedback{

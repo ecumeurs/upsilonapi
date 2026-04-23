@@ -48,6 +48,12 @@ type Turn struct {
 	EntityID string `json:"entity_id"`
 }
 
+type CreditAward struct {
+	PlayerID string `json:"player_id"`
+	Amount   int    `json:"amount"`
+	Source   string `json:"source"` // damage, healing, status
+}
+
 // ActionFeedback provides explicit data about the last tactical action.
 // @spec-link [[api_go_action_feedback]]
 type ActionFeedback struct {
@@ -58,6 +64,7 @@ type ActionFeedback struct {
 	Damage   int                 `json:"damage,omitempty"`
 	PrevHP   int                 `json:"prev_hp,omitempty"`
 	NewHP    int                 `json:"new_hp,omitempty"`
+	Credits  []CreditAward       `json:"credits,omitempty"`
 }
 
 // BoardState represents the current state of the board.
