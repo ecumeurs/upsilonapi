@@ -15,7 +15,8 @@ func TestArenaLifecycleDestruction(t *testing.T) {
 
 	// 1. Manually start an arena to simulate StartArena but with more control
 	req := api.ArenaStartRequest{
-		MatchID: matchID.String(),
+		MatchID:     matchID.String(),
+		CallbackURL: "http://localhost/webhook",
 		Players: []api.Player{
 			{
 				ID:   uuid.New().String(),
@@ -63,7 +64,8 @@ func TestCascadingShutdown(t *testing.T) {
 	
 	pID := uuid.New()
 	req := api.ArenaStartRequest{
-		MatchID: matchID.String(),
+		MatchID:     matchID.String(),
+		CallbackURL: "http://localhost/webhook",
 		Players: []api.Player{
 			{
 				ID:   pID.String(),
@@ -77,10 +79,13 @@ func TestCascadingShutdown(t *testing.T) {
 	}
 
 	// StartArena will create the Ruler and one AggressiveController
-	bridge.StartArena(req)
+	_, _, _, _, _, _, err := bridge.StartArena(req)
+	assert.NoError(t, err)
 	
 	arena, ok := bridge.arenas[matchID]
-	assert.True(t, ok)
+	if !ok {
+		t.Fatalf("Arena not found for match %s", matchID)
+	}
 	
 	ruler := arena.Ruler
 	assert.NotNil(t, ruler)

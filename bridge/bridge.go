@@ -108,14 +108,15 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 				ControllerID: playerID,
 			}
 			e.Properties = make(map[string]property.Property) // Ensure properties map is initialized
+			e.Position = position.New(ee.Position.X, ee.Position.Y, 1)
 
-			e.RepsertPropertyCMaxValue("HP", ee.MaxHP)
-			e.RepsertPropertyCValue("HP", ee.HP)
-			e.RepsertPropertyCMaxValue("Movement", ee.MaxMove)
-			e.RepsertPropertyCValue("Movement", ee.Move)
-			e.RepsertPropertyValue("Attack", ee.Attack)
-			e.RepsertPropertyValue("Defense", ee.Defense)
-			e.RepsertPropertyValue("TeamID", p.Team)
+			e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
+			e.RepsertPropertyCValue(property.HP, ee.HP)
+			e.RepsertPropertyCMaxValue(property.Movement, ee.MaxMove)
+			e.RepsertPropertyCValue(property.Movement, ee.Move)
+			e.RepsertPropertyValue(property.Attack, ee.Attack)
+			e.RepsertPropertyValue(property.Defense, ee.Defense)
+			e.RepsertPropertyValue(property.TeamID, p.Team)
 
 			battleArena.Ruler.AddEntity(e)
 		}
