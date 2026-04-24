@@ -294,11 +294,6 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 			EntityID:     entityID,
 			Path:         path,
 		}, rulermethods.ControllerMoveReply{}), respChan)
-	case "forfeit":
-		r.SendActor(message.Create(nil, rulermethods.ControllerForfeit{
-			ControllerID: playerID,
-			EntityID:     entityID,
-		}, rulermethods.ControllerForfeit{}), respChan)
 	default:
 		// Just notify the ruler for now with a generic message if type matches?
 		// Better to implement specific methods
@@ -317,6 +312,32 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 	}
 
 	return true, fmt.Sprintf("action %s accepted", req.Data.Type), res.Content
+}
+
+// ArenaForfeit allows a player to concede the match without an entity context.
+// @spec-link [[api_go_battle_forfeit]]
+func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool, string, interface{}) {
+	r, ok := b.GetArena(arenaID)
+	if !ok {
+		return false, "arena not found", nil
+	}
+
+	respChan := make(chan *message.Message)
+	defer close(respChan)
+
+	r.SendActor(message.Create(nil, rulermethods.ControllerForfeit{
+		ControllerID: playerID,
+		EntityID:     uuid.Nil, // Forfeiting is team-wide
+	}, rulermethods.ControllerForfeit{}), respChan)
+
+	// Wait for the reply
+	res := <-respChan
+
+	if res.HasError {
+		return false, res.ErrorMessage, nil
+	}
+
+	return true, "forfeit accepted", res.Content
 }
 
 func (b *ArenaBridge) GetArena(id uuid.UUID) (*ruler.Ruler, bool) {

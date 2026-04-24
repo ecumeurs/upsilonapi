@@ -36,6 +36,7 @@ func main() {
 	{
 		internal.POST("/arena/start", handler.HandleArenaStart)
 		internal.POST("/arena/:id/action", handler.HandleArenaAction)
+		internal.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
 	}
 
 	// V1 API

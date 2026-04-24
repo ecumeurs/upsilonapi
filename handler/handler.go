@@ -76,6 +76,37 @@ func HandleArenaAction(c *gin.Context) {
 	c.JSON(http.StatusOK, api.NewSuccess(req.RequestID, msg, res))
 }
 
+// HandleArenaForfeit handles a player conceding the match.
+// @spec-link [[api_go_battle_forfeit]]
+func HandleArenaForfeit(c *gin.Context) {
+	var req api.ArenaForfeitMessage
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
+		return
+	}
+
+	idStr := c.Param("id")
+	arenaID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError(req.RequestID, "invalid arena id"))
+		return
+	}
+
+	playerID, err := uuid.Parse(req.Data.PlayerID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError(req.RequestID, "invalid player id"))
+		return
+	}
+
+	ok, msg, _ := bridge.Get().ArenaForfeit(arenaID, playerID)
+	if !ok {
+		c.JSON(http.StatusPreconditionFailed, api.NewError(req.RequestID, msg))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.NewSuccess(req.RequestID, "Forfeit accepted", stdmessage.DataNil{}))
+}
+
 // HandleGetActiveMatchStats returns the number of active matches.
 func HandleGetActiveMatchStats(c *gin.Context) {
 	count := bridge.Get().GetActiveMatchCount()

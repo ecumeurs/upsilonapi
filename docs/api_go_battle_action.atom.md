@@ -25,7 +25,7 @@ To allow players to perform actions (Move, Attack, Skill) within an active battl
 ### Request (Wrapped in [[api_standard_envelope]])
 - `player_id`: `string (UUID)` [MANDATORY]
 - `entity_id`: `string (UUID)` [MANDATORY]
-- `type`: `string` [MANDATORY] - 'move', 'attack', 'pass', or 'forfeit'.
+- `type`: `string` [MANDATORY] - 'move', 'attack', or 'pass'.
 - `target_coords`: `Array<Position>` [MANDATORY for 'move' and 'attack']
 
 ### Response (Wrapped in [[api_standard_envelope]])
@@ -44,5 +44,4 @@ Standard response with updated entity state or result.
 ## EXPECTATION (For Testing)
 - Valid `ArenaActionRequest` -> Ruler processes action -> Returns `200 OK`.
 - Action target out of range -> Returns `400 Bad Request`.
-- Forfeit action `{"type": "forfeit"}` -> Ruler triggers `winner_team_id` broadcast to all participants.
 - Arena ID not found -> Returns `400 Bad Request`.

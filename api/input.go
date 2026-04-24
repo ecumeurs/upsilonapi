@@ -46,5 +46,10 @@ type ArenaStartRequest struct {
 	Players     []Player `json:"players"`
 }
 
+type ArenaForfeitRequest struct {
+	PlayerID string `json:"player_id"`
+}
+
 type ArenaActionMessage = stdmessage.StandardMessage[ArenaActionRequest, stdmessage.MetaNil]
 type ArenaStartMessage = stdmessage.StandardMessage[ArenaStartRequest, stdmessage.MetaNil]
+type ArenaForfeitMessage = stdmessage.StandardMessage[ArenaForfeitRequest, stdmessage.MetaNil]
