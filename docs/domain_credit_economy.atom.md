@@ -1,0 +1,45 @@
+---
+id: domain_credit_economy
+human_name: Credit Economy Domain
+type: DOMAIN
+layer: CUSTOMER
+version: 2.0
+status: DRAFT
+priority: 5
+tags: [economy, credits, progression]
+parents:
+  - [[domain_upsilon_engine]]
+dependents:
+  - [[entity_player_credits]]
+  - [[mec_credit_spending_shop]]
+  - [[rule_credit_earning_damage]]
+  - [[rule_credit_earning_status_effects]]
+  - [[rule_credit_earning_support]]
+---
+
+# Credit Economy Domain
+
+## INTENT
+To establish the credit economy as the primary progression currency, enabling players to earn credits through combat performance and spend them on skills and equipment.
+
+## THE RULE / LOGIC
+**Credit Sources:**
+- **Damage Dealing:** 1 HP damage = 1 credit
+- **Healing:** 1 HP healed = 1 credit
+- **Damage Mitigation:** 1 HP blocked/shielded = 1 credit (for caster)
+- **Status Effects:** SkillWeight/10 credits per application
+
+**Credit Sinks:**
+- **Skill Purchases:** Skill Weight × 2 credits
+- **Equipment Purchases:** Base cost × tier multiplier
+- **Skill Reforging:** Modification costs based on grade change
+
+**Economy Principles:**
+- **Transparent Earning:** Clear 1:1 HP-to-credit ratio
+- **Meaningful Spending:** Credits purchase permanent character upgrades
+- **Balanced Progression:** Credit earning scales with character power
+- **Support Viability:** Multiple earning paths for different playstyles
+
+## TECHNICAL INTERFACE (The Bridge)
+- **Code Tag:** `@spec-link [[domain_credit_economy]]`
+- **Test Names:** `TestCreditEconomyBalance`, `TestSupportCreditViability`

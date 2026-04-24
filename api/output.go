@@ -186,18 +186,35 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 		Height: g.Length,
 		Cells:  make([][]Cell, g.Width),
 	}
+
+	// Create character lookup map for cell entity resolution
+	// @spec-link [[mechanic_multi_entity_cell_system]]
+	charMap := make(map[uuid.UUID]bool)
+	for _, e := range entities {
+		if e.Type == entity.Character || e.Type == entity.Monster {
+			charMap[e.ID] = true
+		}
+	}
+
 	for x := 0; x < g.Width; x++ {
 		bs.Grid.Cells[x] = make([]Cell, g.Length)
 		for y := 0; y < g.Length; y++ {
 			z := g.TopMostCellAt(x, y)
 			cl, ok := g.CellAt(position.New(x, y, z))
 			if ok {
-				bs.Grid.Cells[x][y] = Cell{
-					EntityID: cl.EntityID.String(),
-					Obstacle: cl.Type == cell.Obstacle,
+				var charID string
+				// Only output the first character entity found in the cell.
+				// Effects and other non-character entities are filtered out for the API's grid view.
+				for _, eid := range cl.EntityIDs {
+					if charMap[eid] {
+						charID = eid.String()
+						break
+					}
 				}
-				if cl.EntityID == uuid.Nil {
-					bs.Grid.Cells[x][y].EntityID = ""
+
+				bs.Grid.Cells[x][y] = Cell{
+					EntityID: charID,
+					Obstacle: cl.Type == cell.Obstacle,
 				}
 			}
 		}
