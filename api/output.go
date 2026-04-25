@@ -30,16 +30,23 @@ type ActiveMatchStatsResponse struct {
 
 // @spec-link [[entity_grid]]
 
+// Cell is the topmost cell at a given (x, y) column of the engine grid.
+// Cave/underground navigation is not exposed by this iteration; clients
+// must treat the cell as the walkable surface at that column.
 type Cell struct {
-	EntityID string `json:"entity_id"` // if any
-	Obstacle bool   `json:"obstacle"`  // if any
+	EntityID string `json:"entity_id"`         // if any
+	Obstacle bool   `json:"obstacle"`          // if any
+	Height   int    `json:"height"`            // Z index of the topmost cell at (x, y); surface elevation
 }
 
-// Grid: A 2D array of cells; for our purpose as in this implementation, the height will be fixed at 1 for every cell giving us a flat map.
+// Grid: A 2D projection of the engine's 3D grid. Each cell is the topmost
+// cell at that column (see Cell). MaxHeight exposes the Z ceiling so clients
+// can scale elevation rendering without guessing.
 type Grid struct {
-	Width  int      `json:"width"`
-	Height int      `json:"height"`
-	Cells  [][]Cell `json:"cells"` // Cells are stored in width-major order.
+	Width     int      `json:"width"`
+	Height    int      `json:"height"`
+	MaxHeight int      `json:"max_height"` // ceiling Z of the engine grid (exclusive upper bound)
+	Cells     [][]Cell `json:"cells"`      // Cells are stored in width-major order.
 }
 
 type Turn struct {
@@ -103,6 +110,25 @@ func NewError(requestId string, err string) stdmessage.StandardMessage[stdmessag
 		RequestID: requestId,
 		Message:   err,
 		Meta:      stdmessage.MetaNil{},
+		Success:   false,
+		Data:      stdmessage.DataNil{},
+	}
+}
+
+// NewErrorWithKey returns a standard-envelope error message that also carries
+// an `error_key` inside `meta`. This is how the engine's ruler error keys
+// (entity.path.obstacle, entity.turn.missmatch, ...) are surfaced to external
+// clients without extending the envelope schema — `meta` is the sanctioned
+// debug/test slot per [[api_standard_envelope]].
+func NewErrorWithKey(requestId string, err string, errorKey string) stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil] {
+	meta := stdmessage.MetaNil{}
+	if errorKey != "" {
+		meta["error_key"] = errorKey
+	}
+	return stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil]{
+		RequestID: requestId,
+		Message:   err,
+		Meta:      meta,
 		Success:   false,
 		Data:      stdmessage.DataNil{},
 	}
@@ -180,11 +206,15 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 		bs.WinnerTeamID = &winnerTeamID
 	}
 
-	// Map Grid
+	// Map Grid. The engine is a true 3D grid; we expose the topmost cell per
+	// (x, y) column so clients (CLI 2D ASCII / battleui 3D) share one source
+	// of truth for the walkable surface. Z information is carried in
+	// Cell.Height, and the Z ceiling via Grid.MaxHeight.
 	bs.Grid = Grid{
-		Width:  g.Width,
-		Height: g.Length,
-		Cells:  make([][]Cell, g.Width),
+		Width:     g.Width,
+		Height:    g.Length,
+		MaxHeight: g.Height,
+		Cells:     make([][]Cell, g.Width),
 	}
 
 	// Create character lookup map for cell entity resolution
@@ -215,6 +245,7 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 				bs.Grid.Cells[x][y] = Cell{
 					EntityID: charID,
 					Obstacle: cl.Type == cell.Obstacle,
+					Height:   z,
 				}
 			}
 		}

@@ -24,6 +24,18 @@ Defines the Data Transfer Objects for the battle system.
 ### BoardState
 Contains `players`, `grid`, `turn`, and the new `action` field.
 
+### Grid
+`Grid` is a width-major 2D projection of the engine's 3D grid, exposing the **topmost cell at every `(x, y)` column** (the walkable surface). Caves/underground are not exposed in this iteration.
+- `width`: `int` — X columns.
+- `height`: `int` — Y rows (grid depth; not elevation).
+- `max_height`: `int` — engine Z ceiling. Clients scale vertical rendering against this value.
+- `cells`: `Cell[x][y]`.
+
+### Cell
+Represents the topmost cell at its `(x, y)` column.
+- `entity_id`, `obstacle` — existing semantics.
+- `height`: `int` — Z index of this topmost cell (surface elevation). 3D clients use it for terrain; 2D clients may ignore or shade.
+
 ### ActionFeedback
 Captures standard tactical outcomes:
 - `move`: includes `actor_id` and `path`.

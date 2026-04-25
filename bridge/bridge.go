@@ -24,6 +24,7 @@ import (
 	"github.com/ecumeurs/upsilonmapdata/grid"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/ecumeurs/upsilonmapmaker/gridgenerator"
+	"github.com/ecumeurs/upsilontools/tools"
 	"github.com/ecumeurs/upsilontools/tools/actor"
 	"github.com/ecumeurs/upsilontools/tools/messagequeue/message"
 	"github.com/google/uuid"
@@ -73,8 +74,16 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	b.arenas[matchID] = battleArena
 	b.mu.Unlock()
 
-	// Use default grid for now, but in the future this should be part of the request
-	battleArena.Ruler.SetGrid(gridgenerator.GeneratePlainSquare(10, 10))
+	// Default to a lightly-hilly 10x10. The Hill generator caps adjacent-cell
+	// delta at 2, so any character with JumpHeight >= 2 can traverse the map.
+	// TODO: accept map parameters from the match-start request.
+	gg := gridgenerator.GridGenerator{
+		Width:  tools.NewIntRange(10, 11),
+		Length: tools.NewIntRange(10, 11),
+		Height: tools.NewIntRange(5, 7),
+		Type:   gridgenerator.Hill,
+	}
+	battleArena.Ruler.SetGrid(gg.Generate())
 	battleArena.Ruler.SetNbControllers(len(start.Players))
 
 	// We need to wait for the reply to get the initial state
@@ -108,7 +117,9 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 				ControllerID: playerID,
 			}
 			e.Properties = make(map[string]property.Property) // Ensure properties map is initialized
-			e.Position = position.New(ee.Position.X, ee.Position.Y, 1)
+			if ee.Position.X != 0 || ee.Position.Y != 0 {
+				e.Position = position.New(ee.Position.X, ee.Position.Y, battleArena.Ruler.GameState.Grid.TopMostGroundAt(ee.Position.X, ee.Position.Y))
+			}
 
 			e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
 			e.RepsertPropertyCValue(property.HP, ee.HP)
@@ -243,20 +254,24 @@ func (b *ArenaBridge) TrySendWebhook(matchID uuid.UUID, version int64, eventType
 	return true
 }
 
-func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage) (bool, string, interface{}) {
+// ArenaAction proxies a tactical command to the Ruler. It returns
+// (ok, message, errorKey, data). errorKey is populated only on failure and
+// mirrors the engine's ReplyWithError key; it lands on the external envelope
+// as `meta.error_key` via [[api_standard_envelope]].
+func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage) (bool, string, string, interface{}) {
 	r, ok := b.GetArena(arenaID)
 	if !ok {
-		return false, "arena not found", nil
+		return false, "arena not found", "arena.notfound", nil
 	}
 
 	playerID, err := uuid.Parse(req.Data.PlayerID)
 	if err != nil {
-		return false, fmt.Sprintf("invalid player_id: %v", err), nil
+		return false, fmt.Sprintf("invalid player_id: %v", err), "request.player_id.invalid", nil
 	}
 
 	entityID, err := uuid.Parse(req.Data.EntityID)
 	if err != nil {
-		return false, fmt.Sprintf("invalid entity_id: %v", err), nil
+		return false, fmt.Sprintf("invalid entity_id: %v", err), "request.entity_id.invalid", nil
 	}
 
 	respChan := make(chan *message.Message)
@@ -269,12 +284,12 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 	switch actionType {
 	case "attack":
 		if len(req.Data.TargetCoords) == 0 {
-			return false, "attack requires target_coords", nil
+			return false, "attack requires target_coords", "request.target_coords.missing", nil
 		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerAttack{
 			ControllerID: playerID,
 			EntityID:     entityID,
-			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, 1),
+			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostGroundAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
 		}, rulermethods.ControllerAttackReply{}), respChan)
 	case "pass":
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
@@ -283,11 +298,11 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		}, rulermethods.EndOfTurn{}), respChan)
 	case "move":
 		if len(req.Data.TargetCoords) == 0 {
-			return false, "move requires target_coords", nil
+			return false, "move requires target_coords", "request.target_coords.missing", nil
 		}
 		path := make([]position.Position, len(req.Data.TargetCoords))
 		for i, c := range req.Data.TargetCoords {
-			path[i] = position.New(c.X, c.Y, 1)
+			path[i] = position.New(c.X, c.Y, r.GameState.Grid.TopMostGroundAt(c.X, c.Y))
 		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerMove{
 			ControllerID: playerID,
@@ -308,18 +323,20 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 	res := <-respChan
 
 	if res.HasError {
-		return false, res.ErrorMessage, nil
+		return false, res.ErrorMessage, res.ErrorKey, nil
 	}
 
-	return true, fmt.Sprintf("action %s accepted", req.Data.Type), res.Content
+	return true, fmt.Sprintf("action %s accepted", req.Data.Type), "", res.Content
 }
 
 // ArenaForfeit allows a player to concede the match without an entity context.
+// Returns (ok, message, errorKey, data). errorKey mirrors the engine reply so
+// the external envelope can surface it as meta.error_key.
 // @spec-link [[api_go_battle_forfeit]]
-func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool, string, interface{}) {
+func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool, string, string, interface{}) {
 	r, ok := b.GetArena(arenaID)
 	if !ok {
-		return false, "arena not found", nil
+		return false, "arena not found", "arena.notfound", nil
 	}
 
 	respChan := make(chan *message.Message)
@@ -334,10 +351,10 @@ func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool,
 	res := <-respChan
 
 	if res.HasError {
-		return false, res.ErrorMessage, nil
+		return false, res.ErrorMessage, res.ErrorKey, nil
 	}
 
-	return true, "forfeit accepted", res.Content
+	return true, "forfeit accepted", "", res.Content
 }
 
 func (b *ArenaBridge) GetArena(id uuid.UUID) (*ruler.Ruler, bool) {

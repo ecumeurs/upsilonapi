@@ -53,9 +53,9 @@ func HandleArenaAction(c *gin.Context) {
 		return
 	}
 
-	ok, msg, data := bridge.Get().ArenaAction(arenaID, req)
+	ok, msg, errKey, data := bridge.Get().ArenaAction(arenaID, req)
 	if !ok {
-		c.JSON(http.StatusPreconditionFailed, api.NewError(req.RequestID, msg))
+		c.JSON(http.StatusPreconditionFailed, api.NewErrorWithKey(req.RequestID, msg, errKey))
 		return
 	}
 
@@ -98,9 +98,9 @@ func HandleArenaForfeit(c *gin.Context) {
 		return
 	}
 
-	ok, msg, _ := bridge.Get().ArenaForfeit(arenaID, playerID)
+	ok, msg, errKey, _ := bridge.Get().ArenaForfeit(arenaID, playerID)
 	if !ok {
-		c.JSON(http.StatusPreconditionFailed, api.NewError(req.RequestID, msg))
+		c.JSON(http.StatusPreconditionFailed, api.NewErrorWithKey(req.RequestID, msg, errKey))
 		return
 	}
 
