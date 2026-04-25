@@ -19,7 +19,6 @@ dependents:
   - [[api_go_battle_start]]
   - [[api_go_webhook_callback]]
   - [[api_profile_export]]
-  - [[rule_tracing_logging]]
 ---
 # Standard JSON Message Envelope
 

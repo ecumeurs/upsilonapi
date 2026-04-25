@@ -13,7 +13,6 @@ dependents:
   - [[api_auth_register]]
   - [[api_battle_proxy]]
   - [[api_laravel_health_check]]
-  - [[api_profile_credits]]
   - [[api_profile_export]]
   - [[api_websocket]]
 ---
