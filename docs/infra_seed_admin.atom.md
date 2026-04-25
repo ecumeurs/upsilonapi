@@ -9,8 +9,7 @@ priority: 5
 tags: [infra, seed, admin]
 parents:
   - [[entity_player]]
-dependents:
-  - [[uc_admin_login]]
+dependents: []
 ---
 # Administrator Account Seeding Requirement
 

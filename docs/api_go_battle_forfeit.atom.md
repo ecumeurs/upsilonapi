@@ -10,8 +10,7 @@ tags: [api, golang, battle, forfeit]
 parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
-dependents:
-  - [[battleui_upsilon_api_service]]
+dependents: []
 ---
 
 # UpsilonBattle Arena Forfeit API

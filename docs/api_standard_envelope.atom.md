@@ -15,6 +15,7 @@ dependents:
   - [[api_battle_proxy]]
   - [[api_go_battle_action]]
   - [[api_go_battle_engine]]
+  - [[api_go_battle_forfeit]]
   - [[api_go_battle_start]]
   - [[api_go_webhook_callback]]
   - [[api_profile_export]]
