@@ -1,16 +1,16 @@
 ---
 id: infra_mvp_docker
 human_name: MVP Docker Infrastructure
-type: BUILD
+type: MECHANIC
 layer: IMPLEMENTATION
 version: 1.0
 status: STABLE
 priority: 5
 tags: [docker, infrastructure, mvp]
 parents:
-  - [[module_backend]]
+  - [[upsilonbattle:module_backend]]
 dependents:
-  - [[watch_services]]
+  - [[upsiloncli:watch_services]]
 ---
 # MVP Docker Infrastructure
 

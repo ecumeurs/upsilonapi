@@ -9,8 +9,8 @@ priority: 5
 tags: []
 parents: []
 dependents:
+  - [[shared:rule_turn_clock]]
   - [[api_ruler_methods]]
-  - [[rule_turn_clock]]
 ---
 # Ruler State Machine Domain
 

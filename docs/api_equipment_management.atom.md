@@ -8,8 +8,8 @@ status: DRAFT
 priority: 5
 tags: [api, equipment, inventory]
 parents:
-  - [[entity_equipment_system]]
-  - [[mec_three_slot_equipment_system]]
+  - [[upsilonbattle:entity_equipment_system]]
+  - [[upsilonbattle:mec_three_slot_equipment_system]]
 dependents: []
 ---
 

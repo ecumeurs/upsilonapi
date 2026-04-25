@@ -6,7 +6,7 @@ human_name: API Help & Discovery Endpoint
 layer: ARCHITECTURE
 version: 1.0
 parents:
-  - [[requirement_customer_api_first]]
+  - [[shared:requirement_customer_api_first]]
 dependents: []
 type: API
 priority: 3

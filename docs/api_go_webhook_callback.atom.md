@@ -11,7 +11,7 @@ parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
 dependents:
-  - [[mech_game_state_versioning]]
+  - [[upsilonbattle:mech_game_state_versioning]]
 ---
 # UpsilonBattle Webhook Callback
 

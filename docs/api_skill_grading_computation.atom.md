@@ -9,7 +9,7 @@ priority: 5
 tags: [api, skills, grading, computation]
 parents:
   - [[mech_skill_weight_calculator]]
-  - [[rule_skill_grading_system]]
+  - [[shared:rule_skill_grading_system]]
 dependents: []
 ---
 

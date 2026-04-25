@@ -11,8 +11,8 @@ parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
 dependents:
+  - [[battleui:battleui_api_dtos]]
   - [[api_go_action_feedback]]
-  - [[battleui_api_dtos]]
 ---
 # UpsilonBattle Arena Action API
 

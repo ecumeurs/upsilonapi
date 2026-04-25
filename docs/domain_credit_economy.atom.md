@@ -2,7 +2,7 @@
 id: domain_credit_economy
 human_name: Credit Economy Domain
 type: DOMAIN
-layer: CUSTOMER
+layer: BUSINESS
 version: 2.0
 status: DRAFT
 priority: 5
@@ -10,11 +10,11 @@ tags: [economy, credits, progression]
 parents:
   - [[domain_upsilon_engine]]
 dependents:
-  - [[entity_player_credits]]
-  - [[mec_credit_spending_shop]]
-  - [[rule_credit_earning_damage]]
-  - [[rule_credit_earning_status_effects]]
-  - [[rule_credit_earning_support]]
+  - [[shared:rule_credit_earning_damage]]
+  - [[shared:rule_credit_earning_status_effects]]
+  - [[shared:rule_credit_earning_support]]
+  - [[upsilonbattle:entity_player_credits]]
+  - [[upsilonbattle:mec_credit_spending_shop]]
 ---
 
 # Credit Economy Domain

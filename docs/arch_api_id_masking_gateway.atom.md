@@ -1,14 +1,14 @@
 ---
 id: arch_api_id_masking_gateway
 human_name: "Architectural API ID Masking Gateway"
-type: SERVICE
+type: MODULE
 layer: ARCHITECTURE
 version: 1.0
 status: STABLE
 priority: 5
 tags: [security, api, masking, uuid]
 parents:
-  - [[requirement_customer_user_id_privacy]]
+  - [[shared:requirement_customer_user_id_privacy]]
 dependents: []
 ---
 

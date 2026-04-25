@@ -8,7 +8,7 @@ status: STABLE
 priority: 5
 tags: [profile, character, api]
 parents:
-  - [[us_character_reroll]]
+  - [[shared:us_character_reroll]]
 dependents: []
 ---
 # Character Management API

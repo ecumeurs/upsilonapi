@@ -10,7 +10,7 @@ tags: [auth, logout]
 parents:
   - [[api_laravel_gateway]]
   - [[api_standard_envelope]]
-  - [[uc_auth_logout]]
+  - [[shared:uc_auth_logout]]
 dependents: []
 ---
 

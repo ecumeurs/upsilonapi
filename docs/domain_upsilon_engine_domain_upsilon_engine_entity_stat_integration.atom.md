@@ -2,7 +2,7 @@
 id: domain_upsilon_engine_domain_upsilon_engine_entity_stat_integration
 human_name: UpsilonBattle Core Engine Entities & Stats Domain
 type: DOMAIN
-layer: CUSTOMER
+layer: BUSINESS
 version: 1.0
 status: STABLE
 priority: 5

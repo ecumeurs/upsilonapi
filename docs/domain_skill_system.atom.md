@@ -2,7 +2,7 @@
 id: domain_skill_system
 human_name: Entity Skill System Domain
 type: DOMAIN
-layer: CUSTOMER
+layer: BUSINESS
 version: 1.0
 status: DRAFT
 priority: 5

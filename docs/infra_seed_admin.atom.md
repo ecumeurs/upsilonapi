@@ -8,8 +8,9 @@ status: STABLE
 priority: 5
 tags: [infra, seed, admin]
 parents:
-  - [[entity_player]]
-dependents: []
+  - [[upsilonbattle:entity_player]]
+dependents:
+  - [[shared:uc_admin_login]]
 ---
 # Administrator Account Seeding Requirement
 

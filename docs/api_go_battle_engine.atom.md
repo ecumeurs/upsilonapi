@@ -10,12 +10,12 @@ tags: [api, golang, rest, webhooks]
 parents:
   - [[api_standard_envelope]]
 dependents:
+  - [[battleui:battleui_upsilon_api_service]]
   - [[api_go_battle_action]]
   - [[api_go_battle_forfeit]]
   - [[api_go_battle_start]]
   - [[api_go_health_check]]
   - [[api_go_webhook_callback]]
-  - [[battleui_upsilon_api_service]]
   - [[module_upsilonapi]]
 ---
 # Go UpsilonBattle JSON API & Webhook Dispatcher

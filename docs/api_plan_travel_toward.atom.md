@@ -5,7 +5,7 @@ type: API
 version: 1.0
 tags: pathfinding,scripting
 parents:
-  - [[mech_move_validation]]
+  - [[upsilonbattle:mech_move_validation]]
 dependents: []
 human_name: Plan Travel Toward API
 layer: IMPLEMENTATION

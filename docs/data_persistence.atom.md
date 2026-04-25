@@ -1,7 +1,7 @@
 ---
 id: data_persistence
 human_name: PostgreSQL Database Persistence
-type: DATA
+type: ENTITY
 layer: IMPLEMENTATION
 version: 1.0
 status: STABLE
@@ -9,8 +9,8 @@ priority: 5
 tags: [database, postgresql, state]
 parents: []
 dependents:
-  - [[entity_game_match]]
-  - [[entity_users]]
+  - [[upsilonbattle:entity_game_match]]
+  - [[upsilonbattle:entity_users]]
 ---
 # PostgreSQL Database Persistence
 
