@@ -30,7 +30,14 @@ type Entity struct {
 	MaxMove        int            `json:"max_move"`
 	Position       Position       `json:"position"` // not used at start
 	EquippedItems  []EquippedItem `json:"equipped_items"`
+	Buffs          []Buff         `json:"buffs"`           // Added for engine state transparency [[mec_item_buff_application]]
 	EquippedSkills []string       `json:"equipped_skills"` // reserved for ISS-073
+}
+
+type Buff struct {
+	OriginID   string         `json:"origin_id"`
+	Forever    bool           `json:"forever"`
+	Properties map[string]any `json:"properties"`
 }
 
 type EquippedItem struct {

@@ -176,6 +176,19 @@ func NewEntity(entity entity.Entity) Entity {
 		}
 	}
 
+	buffs := make([]Buff, 0, len(entity.Buffs))
+	for _, b := range entity.Buffs {
+		props := make(map[string]any)
+		for k, v := range b.Properties {
+			props[k] = v.Get()
+		}
+		buffs = append(buffs, Buff{
+			OriginID:   b.OriginEntityID.String(),
+			Forever:    b.Forever,
+			Properties: props,
+		})
+	}
+
 	return Entity{
 		ID:       entity.ID.String(),
 		PlayerID: entity.ControllerID.String(),
@@ -188,6 +201,7 @@ func NewEntity(entity entity.Entity) Entity {
 		Move:     move,
 		MaxMove:  maxMove,
 		Position: Position{X: entity.Position.X, Y: entity.Position.Y},
+		Buffs:    buffs,
 	}
 }
 

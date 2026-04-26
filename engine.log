@@ -4,7 +4,7 @@
  - using env:	export GIN_MODE=release
  - using code:	gin.SetMode(gin.ReleaseMode)
 
-time="2026-04-24T12:16:22Z" level=info msg="Starting UpsilonAPI server on :8081 (rev: unknown)"
+time="2026-04-26T19:17:37Z" level=info msg="Starting UpsilonAPI server on :8081 (rev: unknown)"
 [GIN-debug] GET    /health                   --> main.main.func1 (3 handlers)
 [GIN-debug] POST   /internal/arena/start     --> github.com/ecumeurs/upsilonapi/handler.HandleArenaStart (3 handlers)
 [GIN-debug] POST   /internal/arena/:id/action --> github.com/ecumeurs/upsilonapi/handler.HandleArenaAction (3 handlers)
@@ -13,5 +13,275 @@ time="2026-04-24T12:16:22Z" level=info msg="Starting UpsilonAPI server on :8081 
 [GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
 Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.
 [GIN-debug] Listening and serving HTTP on :8081
-[GIN-debug] [ERROR] listen tcp :8081: bind: address already in use
-time="2026-04-24T12:16:22Z" level=fatal msg="Failed to start server: listen tcp :8081: bind: address already in use"
+ground height 2
+2026/04/26 19:18:09 [ArenaBridge] Registering buff for item Basic Armor on entity Sentinel with 1 properties
+2026/04/26 19:18:09 [ArenaBridge] Registering buff for item Basic Sword on entity Sentinel with 3 properties
+2026/04/26 19:18:09 [ArenaBridge] Registering buff for item Basic Armor on entity Paladin with 1 properties
+2026/04/26 19:18:09 [ArenaBridge] Registering buff for item Basic Sword on entity Paladin with 3 properties
+time="2026-04-26T19:18:09Z" level=info msg="Starting message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:18:09Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Actor started" component=actor name="Controller 019dcb3a"
+2026/04/26 19:18:09 [ArenaBridge] Waiting for AddController reply (1/2) for match 019dcb3a-50b4-730b-b461-d0a5d0aa7287
+time="2026-04-26T19:18:09Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Actor started" component=actor name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Actor started" component=actor name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="Actor started" component=actor name=Ruler
+time="2026-04-26T19:18:09Z" level=info msg=AddController ControllerID=019dcb3a component=actor message="[R a326b492]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg=AddController ControllerID=019dcb3a component=actor message="[R e9c9ce33]" message_type=rulermethods.AddController name=Ruler request_type=message
+Controller:  019dcb3a-4e8f-711f-b761-78b275e58bae  is now assigned to a player
+2026/04/26 19:18:09 [ArenaBridge] Received AddController reply for match 019dcb3a-50b4-730b-b461-d0a5d0aa7287 (Error: false)
+2026/04/26 19:18:09 [ArenaBridge] Waiting for AddController reply (2/2) for match 019dcb3a-50b4-730b-b461-d0a5d0aa7287
+2026/04/26 19:18:09 [ArenaBridge] Received AddController reply for match 019dcb3a-50b4-730b-b461-d0a5d0aa7287 (Error: false)
+2026/04/26 19:18:09 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:18:09 [api] Entity Sentinel has 2 buffs in engine
+time="2026-04-26T19:18:09Z" level=info msg="Actor started" component=actor name="Controller 019dcb3a"
+time="2026-04-26T19:18:09Z" level=info msg="All controllers registered, scheduling BattleStart" component=actor message="[R e9c9ce33]" message_type=rulermethods.AddController name=Ruler request_type=message
+Controller:  019dcb3a-4dd9-7033-ba69-f21742d258cf  is now assigned to a player
+[GIN] 2026/04/26 - 19:18:09 | 200 |   2.11ms |             ::1 | POST     "/internal/arena/start"
+time="2026-04-26T19:18:09Z" level=info msg="Processing BattleStart internal notification" component=actor message="[R dd7fcb0e]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=0 version=0.0
+time="2026-04-26T19:18:09Z" level=info msg="Broadcasting BattleStart to all controllers" component=actor message="[R dd7fcb0e]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg="Waiting for controllers to signal readiness before first turn" component=actor message="[R dd7fcb0e]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg="HTTPController 019dcb3a-4e8f-711f-b761-78b275e58bae: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:18:09Z" level=info msg="HTTPController 019dcb3a-4dd9-7033-ba69-f21742d258cf: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:18:09Z" level=info msg=ControllerBattleReady component=actor message="[R a5d89e97]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg=ControllerBattleReady component=actor message="[R b08e5901]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+2026/04/26 19:18:09 [api] Entity Sentinel has 2 buffs in engine
+2026/04/26 19:18:09 [api] Entity Paladin has 2 buffs in engine
+time="2026-04-26T19:18:09Z" level=info msg="Picking first entity to play" component=actor message="[R 46441188]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg="Handing turn to first entity" component=actor entityID=019dcb3a message="[R 46441188]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:18:09Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=1 version=1.0
+2026/04/26 19:18:09 [api] Entity Sentinel has 2 buffs in engine
+2026/04/26 19:18:09 [api] Entity Paladin has 2 buffs in engine
+time="2026-04-26T19:18:39Z" level=warning msg="Turn timeout detected! Forcing EndOfTurn." component=Ruler name=Ruler
+time="2026-04-26T19:18:39Z" level=info msg="##### END OF TURN #####" component=actor entityID=019dcb3a message="[R 1738211d]" message_type=rulermethods.Timeout name=Ruler request_type=message
+time="2026-04-26T19:18:39Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=2 version=2.0
+2026/04/26 19:18:39 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:18:39 [api] Entity Sentinel has 2 buffs in engine
+2026/04/26 19:18:40 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:18:40 [api] Entity Sentinel has 2 buffs in engine
+2026/04/26 19:18:40 [api] Entity Sentinel has 2 buffs in engine
+2026/04/26 19:18:40 [api] Entity Paladin has 2 buffs in engine
+time="2026-04-26T19:18:40Z" level=info msg=ControllerForfeit component=actor controllerID=019dcb3a entityID=00000000 message="[R e2360457]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+time="2026-04-26T19:18:40Z" level=info msg=GameState.Forfeit component=rules controllerID=019dcb3a rulerID=019dcb3a
+time="2026-04-26T19:18:40Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3a rulerID=019dcb3a teamID=2
+time="2026-04-26T19:18:40Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3a rulerID=019dcb3a teamID=2
+time="2026-04-26T19:18:40Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3a rulerID=019dcb3a teamID=2
+time="2026-04-26T19:18:40Z" level=info msg="##### END OF BATTLE! #####" component=actor message="[R e2360457]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+[GIN] 2026/04/26 - 19:18:40 | 200 | 336.469µs |             ::1 | POST     "/internal/arena/019dcb3a-50b4-730b-b461-d0a5d0aa7287/forfeit"
+2026/04/26 19:18:40 [api] Entity Sentinel has 2 buffs in engine
+time="2026-04-26T19:18:40Z" level=info msg="Battle 019dcb3a-50b4-730b-b461-d0a5d0aa7287 ended, triggering arena destruction"
+2026/04/26 19:18:40 [ArenaBridge] Destroying arena 019dcb3a-50b4-730b-b461-d0a5d0aa7287
+time="2026-04-26T19:18:40Z" level=info msg="Ruler is about to stop, stopping all controllers and timers" component=Ruler name=Ruler
+time="2026-04-26T19:18:40Z" level=info msg="Stopping controller 019dcb3a-4dd9-7033-ba69-f21742d258cf" component=Ruler name=Ruler
+time="2026-04-26T19:18:40Z" level=info msg="Stopping controller 019dcb3a-4e8f-711f-b761-78b275e58bae" component=Ruler name=Ruler
+time="2026-04-26T19:18:40Z" level=info msg="Stopping message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:18:40Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3a"
+time="2026-04-26T19:18:40Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3a"
+[GIN] 2026/04/26 - 19:18:40 | 412 | 56.814µs |             ::1 | POST     "/internal/arena/019dcb3a-50b4-730b-b461-d0a5d0aa7287/forfeit"
+ground height 2
+2026/04/26 19:18:56 [ArenaBridge] Registering buff for item Basic Armor on entity Artificer with 1 properties
+2026/04/26 19:18:56 [ArenaBridge] Registering buff for item Basic Sword on entity Artificer with 3 properties
+2026/04/26 19:18:56 [ArenaBridge] Registering buff for item Basic Armor on entity Artificer with 1 properties
+2026/04/26 19:18:56 [ArenaBridge] Registering buff for item Basic Sword on entity Artificer with 3 properties
+time="2026-04-26T19:18:56Z" level=info msg="Starting message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:18:56Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Actor started" component=actor name=Ruler
+2026/04/26 19:18:56 [ArenaBridge] Waiting for AddController reply (1/2) for match 019dcb3b-0859-71b9-b6c3-1c1c371e4897
+time="2026-04-26T19:18:56Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg=AddController ControllerID=019dcb3b component=actor message="[R 0b99e0b7]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg=AddController ControllerID=019dcb3b component=actor message="[R c59898e9]" message_type=rulermethods.AddController name=Ruler request_type=message
+Controller:  019dcb3b-0738-731f-9cd2-b778fb5e21c9  is now assigned to a player
+2026/04/26 19:18:56 [ArenaBridge] Received AddController reply for match 019dcb3b-0859-71b9-b6c3-1c1c371e4897 (Error: false)
+Controller:  019dcb3b-027b-7160-a9b6-d8e97fce4b17  is now assigned to a player
+2026/04/26 19:18:56 [ArenaBridge] Waiting for AddController reply (2/2) for match 019dcb3b-0859-71b9-b6c3-1c1c371e4897
+2026/04/26 19:18:56 [ArenaBridge] Received AddController reply for match 019dcb3b-0859-71b9-b6c3-1c1c371e4897 (Error: false)
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+time="2026-04-26T19:18:56Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:18:56Z" level=info msg="All controllers registered, scheduling BattleStart" component=actor message="[R c59898e9]" message_type=rulermethods.AddController name=Ruler request_type=message
+[GIN] 2026/04/26 - 19:18:56 | 200 | 997.826µs |             ::1 | POST     "/internal/arena/start"
+time="2026-04-26T19:18:56Z" level=info msg="Processing BattleStart internal notification" component=actor message="[R 45b280ac]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=0 version=0.0
+time="2026-04-26T19:18:56Z" level=info msg="Broadcasting BattleStart to all controllers" component=actor message="[R 45b280ac]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg="Waiting for controllers to signal readiness before first turn" component=actor message="[R 45b280ac]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg="HTTPController 019dcb3b-027b-7160-a9b6-d8e97fce4b17: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:18:56Z" level=info msg="HTTPController 019dcb3b-0738-731f-9cd2-b778fb5e21c9: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:18:56Z" level=info msg=ControllerBattleReady component=actor message="[R 5e2f8c53]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg=ControllerBattleReady component=actor message="[R 9dae45b2]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+time="2026-04-26T19:18:56Z" level=info msg="Picking first entity to play" component=actor message="[R 0a71077f]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg="Handing turn to first entity" component=actor entityID=019dcb3b message="[R 0a71077f]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:18:56Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=1 version=1.0
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:18:56 [api] Entity Artificer has 2 buffs in engine
+time="2026-04-26T19:19:27Z" level=warning msg="Turn timeout detected! Forcing EndOfTurn." component=Ruler name=Ruler
+time="2026-04-26T19:19:27Z" level=info msg="##### END OF TURN #####" component=actor entityID=019dcb3b message="[R c8326dcf]" message_type=rulermethods.Timeout name=Ruler request_type=message
+time="2026-04-26T19:19:27Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=2 version=2.0
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+time="2026-04-26T19:19:27Z" level=info msg=ControllerForfeit component=actor controllerID=019dcb3b entityID=00000000 message="[R c8e63c6c]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+time="2026-04-26T19:19:27Z" level=info msg=GameState.Forfeit component=rules controllerID=019dcb3b rulerID=019dcb3b
+time="2026-04-26T19:19:27Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:19:27Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:19:27Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:19:27Z" level=info msg="##### END OF BATTLE! #####" component=actor message="[R c8e63c6c]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+[GIN] 2026/04/26 - 19:19:27 | 200 | 181.574µs |             ::1 | POST     "/internal/arena/019dcb3b-0859-71b9-b6c3-1c1c371e4897/forfeit"
+2026/04/26 19:19:27 [api] Entity Artificer has 2 buffs in engine
+time="2026-04-26T19:19:27Z" level=info msg="Battle 019dcb3b-0859-71b9-b6c3-1c1c371e4897 ended, triggering arena destruction"
+2026/04/26 19:19:27 [ArenaBridge] Destroying arena 019dcb3b-0859-71b9-b6c3-1c1c371e4897
+time="2026-04-26T19:19:27Z" level=info msg="Ruler is about to stop, stopping all controllers and timers" component=Ruler name=Ruler
+time="2026-04-26T19:19:27Z" level=info msg="Stopping controller 019dcb3b-027b-7160-a9b6-d8e97fce4b17" component=Ruler name=Ruler
+time="2026-04-26T19:19:27Z" level=info msg="Stopping controller 019dcb3b-0738-731f-9cd2-b778fb5e21c9" component=Ruler name=Ruler
+time="2026-04-26T19:19:27Z" level=info msg="Stopping message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:19:27Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:19:27Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3b"
+[GIN] 2026/04/26 - 19:19:27 | 412 | 56.735µs |             ::1 | POST     "/internal/arena/019dcb3b-0859-71b9-b6c3-1c1c371e4897/forfeit"
+ground height 2
+2026/04/26 19:19:55 [ArenaBridge] Registering buff for item Basic Armor on entity Warden with 1 properties
+2026/04/26 19:19:55 [ArenaBridge] Registering buff for item Basic Sword on entity Warden with 3 properties
+2026/04/26 19:19:55 [ArenaBridge] Registering buff for item Basic Armor on entity Slayer with 1 properties
+2026/04/26 19:19:55 [ArenaBridge] Registering buff for item Basic Sword on entity Slayer with 3 properties
+time="2026-04-26T19:19:55Z" level=info msg="Starting message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:19:55Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+2026/04/26 19:19:55 [ArenaBridge] Waiting for AddController reply (1/2) for match 019dcb3b-ebf0-719e-bf4a-194712c8b7fa
+time="2026-04-26T19:19:55Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Actor started" component=actor name="Controller 019dcb3b"
+time="2026-04-26T19:19:55Z" level=info msg="Actor started" component=actor name=Ruler
+time="2026-04-26T19:19:55Z" level=info msg=AddController ControllerID=019dcb3b component=actor message="[R 924cd950]" message_type=rulermethods.AddController name=Ruler request_type=message
+2026/04/26 19:19:55 [ArenaBridge] Received AddController reply for match 019dcb3b-ebf0-719e-bf4a-194712c8b7fa (Error: false)
+2026/04/26 19:19:55 [ArenaBridge] Waiting for AddController reply (2/2) for match 019dcb3b-ebf0-719e-bf4a-194712c8b7fa
+Controller:  019dcb3b-e904-7335-96c6-4c6bff6d26e0  is now assigned to a player
+time="2026-04-26T19:19:55Z" level=info msg=AddController ControllerID=019dcb3b component=actor message="[R 80d0670d]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="All controllers registered, scheduling BattleStart" component=actor message="[R 80d0670d]" message_type=rulermethods.AddController name=Ruler request_type=message
+2026/04/26 19:19:55 [ArenaBridge] Received AddController reply for match 019dcb3b-ebf0-719e-bf4a-194712c8b7fa (Error: false)
+Controller:  019dcb3b-e9d1-726f-aa28-2a3379766281  is now assigned to a player
+2026/04/26 19:19:55 [api] Entity Warden has 2 buffs in engine
+2026/04/26 19:19:55 [api] Entity Slayer has 2 buffs in engine
+[GIN] 2026/04/26 - 19:19:55 | 200 |   1.54ms |             ::1 | POST     "/internal/arena/start"
+time="2026-04-26T19:19:55Z" level=info msg="Processing BattleStart internal notification" component=actor message="[R f8ae3ce0]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=0 version=0.0
+time="2026-04-26T19:19:55Z" level=info msg="Broadcasting BattleStart to all controllers" component=actor message="[R f8ae3ce0]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="Waiting for controllers to signal readiness before first turn" component=actor message="[R f8ae3ce0]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="HTTPController 019dcb3b-e904-7335-96c6-4c6bff6d26e0: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:19:55Z" level=info msg="HTTPController 019dcb3b-e9d1-726f-aa28-2a3379766281: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:19:55Z" level=info msg=ControllerBattleReady component=actor message="[R 68dce463]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg=ControllerBattleReady component=actor message="[R aa835030]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+2026/04/26 19:19:55 [api] Entity Warden has 2 buffs in engine
+2026/04/26 19:19:55 [api] Entity Slayer has 2 buffs in engine
+time="2026-04-26T19:19:55Z" level=info msg="Picking first entity to play" component=actor message="[R da75955a]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="Handing turn to first entity" component=actor entityID=019dcb3b message="[R da75955a]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:19:55Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=1 version=1.0
+2026/04/26 19:19:55 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:19:55 [api] Entity Warden has 2 buffs in engine
+time="2026-04-26T19:20:25Z" level=warning msg="Turn timeout detected! Forcing EndOfTurn." component=Ruler name=Ruler
+time="2026-04-26T19:20:25Z" level=info msg="##### END OF TURN #####" component=actor entityID=019dcb3b message="[R d447126c]" message_type=rulermethods.Timeout name=Ruler request_type=message
+time="2026-04-26T19:20:25Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=2 version=2.0
+2026/04/26 19:20:25 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:20:25 [api] Entity Warden has 2 buffs in engine
+2026/04/26 19:20:25 [api] Entity Warden has 2 buffs in engine
+2026/04/26 19:20:25 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:20:25 [api] Entity Warden has 2 buffs in engine
+2026/04/26 19:20:25 [api] Entity Slayer has 2 buffs in engine
+time="2026-04-26T19:20:25Z" level=info msg=ControllerForfeit component=actor controllerID=019dcb3b entityID=00000000 message="[R b21f8aed]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+time="2026-04-26T19:20:25Z" level=info msg=GameState.Forfeit component=rules controllerID=019dcb3b rulerID=019dcb3b
+time="2026-04-26T19:20:25Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:20:25Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:20:25Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3b rulerID=019dcb3b teamID=2
+time="2026-04-26T19:20:25Z" level=info msg="##### END OF BATTLE! #####" component=actor message="[R b21f8aed]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+[GIN] 2026/04/26 - 19:20:25 | 200 | 185.22µs |             ::1 | POST     "/internal/arena/019dcb3b-ebf0-719e-bf4a-194712c8b7fa/forfeit"
+2026/04/26 19:20:25 [api] Entity Warden has 2 buffs in engine
+time="2026-04-26T19:20:25Z" level=info msg="Battle 019dcb3b-ebf0-719e-bf4a-194712c8b7fa ended, triggering arena destruction"
+2026/04/26 19:20:25 [ArenaBridge] Destroying arena 019dcb3b-ebf0-719e-bf4a-194712c8b7fa
+time="2026-04-26T19:20:25Z" level=info msg="Ruler is about to stop, stopping all controllers and timers" component=Ruler name=Ruler
+time="2026-04-26T19:20:25Z" level=info msg="Stopping controller 019dcb3b-e904-7335-96c6-4c6bff6d26e0" component=Ruler name=Ruler
+time="2026-04-26T19:20:25Z" level=info msg="Stopping controller 019dcb3b-e9d1-726f-aa28-2a3379766281" component=Ruler name=Ruler
+time="2026-04-26T19:20:25Z" level=info msg="Stopping message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:20:25Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3b"
+time="2026-04-26T19:20:25Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3b"
+[GIN] 2026/04/26 - 19:20:25 | 412 | 60.842µs |             ::1 | POST     "/internal/arena/019dcb3b-ebf0-719e-bf4a-194712c8b7fa/forfeit"
+ground height 3
+2026/04/26 19:22:12 [ArenaBridge] Registering buff for item Basic Armor on entity Slayer with 1 properties
+2026/04/26 19:22:12 [ArenaBridge] Registering buff for item Basic Sword on entity Slayer with 3 properties
+2026/04/26 19:22:12 [ArenaBridge] Registering buff for item Basic Armor on entity Paladin with 1 properties
+2026/04/26 19:22:12 [ArenaBridge] Registering buff for item Basic Sword on entity Paladin with 3 properties
+time="2026-04-26T19:22:12Z" level=info msg="Starting message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:22:12Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3e"
+2026/04/26 19:22:12 [ArenaBridge] Waiting for AddController reply (1/2) for match 019dcb3e-045e-717d-bd58-d4614861eefe
+time="2026-04-26T19:22:12Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg="Actor started" component=actor name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg="Actor started" component=actor name=Ruler
+time="2026-04-26T19:22:12Z" level=info msg=AddController ControllerID=019dcb3e component=actor message="[R 41604270]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3e"
+2026/04/26 19:22:12 [ArenaBridge] Received AddController reply for match 019dcb3e-045e-717d-bd58-d4614861eefe (Error: false)
+Controller:  019dcb3e-0005-730c-a5d3-10207cdea3d0  is now assigned to a player
+2026/04/26 19:22:12 [ArenaBridge] Waiting for AddController reply (2/2) for match 019dcb3e-045e-717d-bd58-d4614861eefe
+time="2026-04-26T19:22:12Z" level=info msg="Actor started" component=actor name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg="Starting message queue" component=messagequeue name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg="Actor started" component=actor name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg="Actor started" component=actor name="Controller 019dcb3e"
+time="2026-04-26T19:22:12Z" level=info msg=AddController ControllerID=019dcb3e component=actor message="[R 873a4406]" message_type=rulermethods.AddController name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="All controllers registered, scheduling BattleStart" component=actor message="[R 873a4406]" message_type=rulermethods.AddController name=Ruler request_type=message
+Controller:  019dcb3e-033d-700b-b309-2347036a0d40  is now assigned to a player
+2026/04/26 19:22:12 [ArenaBridge] Received AddController reply for match 019dcb3e-045e-717d-bd58-d4614861eefe (Error: false)
+2026/04/26 19:22:12 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:22:12 [api] Entity Paladin has 2 buffs in engine
+[GIN] 2026/04/26 - 19:22:12 | 200 |   1.21ms |             ::1 | POST     "/internal/arena/start"
+time="2026-04-26T19:22:12Z" level=info msg="Processing BattleStart internal notification" component=actor message="[R 917777cb]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=0 version=0.0
+time="2026-04-26T19:22:12Z" level=info msg="Broadcasting BattleStart to all controllers" component=actor message="[R 917777cb]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="Waiting for controllers to signal readiness before first turn" component=actor message="[R 917777cb]" message_type=rulermethods.BattleStart name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="HTTPController 019dcb3e-033d-700b-b309-2347036a0d40: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:22:12Z" level=info msg="HTTPController 019dcb3e-0005-730c-a5d3-10207cdea3d0: BattleStart received, notifying BattleReady"
+time="2026-04-26T19:22:12Z" level=info msg=ControllerBattleReady component=actor message="[R a379774a]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg=ControllerBattleReady component=actor message="[R 11ee7a69]" message_type=rulermethods.ControllerBattleReady name=Ruler request_type=message
+2026/04/26 19:22:12 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:22:12 [api] Entity Paladin has 2 buffs in engine
+time="2026-04-26T19:22:12Z" level=info msg="Picking first entity to play" component=actor message="[R 9d9be4a7]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="Handing turn to first entity" component=actor entityID=019dcb3e message="[R 9d9be4a7]" message_type=rulermethods.InternalTriggerFirstTurn name=Ruler request_type=message
+time="2026-04-26T19:22:12Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=1 version=1.0
+2026/04/26 19:22:12 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:22:12 [api] Entity Slayer has 2 buffs in engine
+time="2026-04-26T19:22:42Z" level=warning msg="Turn timeout detected! Forcing EndOfTurn." component=Ruler name=Ruler
+time="2026-04-26T19:22:42Z" level=info msg="##### END OF TURN #####" component=actor entityID=019dcb3e message="[R dd11f973]" message_type=rulermethods.Timeout name=Ruler request_type=message
+time="2026-04-26T19:22:42Z" level=info msg="Starting turn shot clock" component=Ruler name=Ruler timeout=30s turn=2 version=2.0
+2026/04/26 19:22:42 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:22:42 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:22:42 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:22:42 [api] Entity Slayer has 2 buffs in engine
+2026/04/26 19:22:42 [api] Entity Paladin has 2 buffs in engine
+2026/04/26 19:22:42 [api] Entity Slayer has 2 buffs in engine
+time="2026-04-26T19:22:42Z" level=info msg=ControllerForfeit component=actor controllerID=019dcb3e entityID=00000000 message="[R 3ad004d4]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+time="2026-04-26T19:22:42Z" level=info msg=GameState.Forfeit component=rules controllerID=019dcb3e rulerID=019dcb3e
+time="2026-04-26T19:22:42Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3e rulerID=019dcb3e teamID=2
+time="2026-04-26T19:22:42Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3e rulerID=019dcb3e teamID=2
+time="2026-04-26T19:22:42Z" level=info msg="Removing forfeiting team entity" component=rules entityID=019dcb3e rulerID=019dcb3e teamID=2
+time="2026-04-26T19:22:42Z" level=info msg="##### END OF BATTLE! #####" component=actor message="[R 3ad004d4]" message_type=rulermethods.ControllerForfeit name=Ruler request_type=message
+[GIN] 2026/04/26 - 19:22:42 | 200 | 174.37µs |             ::1 | POST     "/internal/arena/019dcb3e-045e-717d-bd58-d4614861eefe/forfeit"
+2026/04/26 19:22:42 [api] Entity Slayer has 2 buffs in engine
+time="2026-04-26T19:22:42Z" level=info msg="Battle 019dcb3e-045e-717d-bd58-d4614861eefe ended, triggering arena destruction"
+2026/04/26 19:22:42 [ArenaBridge] Destroying arena 019dcb3e-045e-717d-bd58-d4614861eefe
+time="2026-04-26T19:22:42Z" level=info msg="Ruler is about to stop, stopping all controllers and timers" component=Ruler name=Ruler
+time="2026-04-26T19:22:42Z" level=info msg="Stopping controller 019dcb3e-0005-730c-a5d3-10207cdea3d0" component=Ruler name=Ruler
+time="2026-04-26T19:22:42Z" level=info msg="Stopping controller 019dcb3e-033d-700b-b309-2347036a0d40" component=Ruler name=Ruler
+time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=messagequeue name=Ruler
+time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3e"
+time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3e"
+[GIN] 2026/04/26 - 19:22:42 | 412 | 62.615µs |             ::1 | POST     "/internal/arena/019dcb3e-045e-717d-bd58-d4614861eefe/forfeit"

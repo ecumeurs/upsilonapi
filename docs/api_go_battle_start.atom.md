@@ -10,9 +10,7 @@ tags: [api, golang, battle, initialization]
 parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
-dependents:
-  - [[battleui:battleui_api_dtos]]
-  - [[battleui_api_dtos]]
+dependents: []
 ---
 # UpsilonBattle Arena Start API
 

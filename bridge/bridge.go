@@ -81,14 +81,15 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	b.arenas[matchID] = battleArena
 	b.mu.Unlock()
 
-	// Default to a lightly-hilly 10x10. The Hill generator caps adjacent-cell
-	// delta at 2, so any character with JumpHeight >= 2 can traverse the map.
-	// TODO: accept map parameters from the match-start request.
+	// Default to a tactically interesting 8x8. 
+	// Tuned per [[ISS-087]] to reduce sparseness in 1v1 and enable obstructions.
 	gg := gridgenerator.GridGenerator{
-		Width:  tools.NewIntRange(10, 11),
-		Length: tools.NewIntRange(10, 11),
-		Height: tools.NewIntRange(5, 7),
-		Type:   gridgenerator.Hill,
+		Width:                tools.NewIntRange(8, 9),
+		Length:               tools.NewIntRange(8, 9),
+		Height:               tools.NewIntRange(5, 7),
+		Type:                 gridgenerator.Hill,
+		GenerateObstrcution:  true,
+		ObstructionRate:      tools.NewIntRange(5, 12), // 5-12% obstruction for tactical depth
 	}
 	battleArena.Ruler.SetGrid(gg.Generate())
 	battleArena.Ruler.SetNbControllers(len(start.Players))
