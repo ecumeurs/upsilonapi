@@ -90,6 +90,8 @@ func TestArenaInit_StatMapping(t *testing.T) {
 						Name:    "Swift Rogue",
 						HP:      10,
 						MaxHP:   10,
+						Move:    3,
+						MaxMove: 3,
 						EquippedItems: []api.EquippedItem{
 							{
 								ItemID: itemID.String(),
