@@ -3,7 +3,7 @@ id: api_equipment_management
 human_name: Equipment Management API
 type: API
 layer: ARCHITECTURE
-version: 2.0
+version: 2.1
 status: DRAFT
 priority: 5
 tags: [api, equipment, inventory]
@@ -16,71 +16,41 @@ dependents: []
 # Equipment Management API
 
 ## INTENT
-To provide API endpoints for equipment management including equipping/unequipping items, viewing equipment inventory, and managing character equipment slots.
+To provide API endpoints for character equipment management: viewing the 3-slot equipment configuration, equipping an inventory item (slot inferred from item type), and unequipping by slot. Equip / unequip are the only state-changing endpoints; purchase lives in `api_shop_purchase`.
 
 ## THE RULE / LOGIC
 **Equipment Management Endpoints:**
 
-**Character Equipment View:**
-- **Endpoint:** `GET /api/v1/character/{id}/equipment`
-- **Returns:** Currently equipped items in 3 slots (armor, utility, weapon)
-- **Response:** Equipment details, stat bonuses, total stat changes
+**View Character Equipment:**
+- **Endpoint:** `GET /api/v1/profile/character/{id}/equipment`
+- **Auth:** Sanctum + ownership policy (user must own the character).
+- **Returns:** The 3-slot configuration (armor, utility, weapon). Each slot is either `null` or an `InventoryItemResource` with the underlying `ShopItemResource` and effective property contributions.
 
-**Equip Item:**
-- **Endpoint:** `POST /api/v1/character/{id}/equip`
-- **Request:** Item ID and target slot
-- **Process:** Validate slot compatibility, unequip current item, equip new item, recalculate stats
-- **Response:** Updated character stats and equipment configuration
+**Equip Item (single endpoint, slot inferred):**
+- **Endpoint:** `POST /api/v1/profile/character/{id}/equip`
+- **Body:** `{ "item_id": "<player_inventory_uuid>" }`
+- **Slot Resolution:** Looked up from `shop_items.slot` of the underlying catalog row. The client MUST NOT pass a slot — the server is the authority.
+- **Validation:**
+  - User owns the character (Policy `equip`).
+  - User owns the inventory row.
+  - If another character of the same user has the item equipped, the previous binding is cleared atomically (cross-character mutual exclusivity in a single DB transaction).
+  - If the slot already holds another item, that item is unbound and returned to inventory.
+- **Response:** Updated `CharacterEquipmentResource` plus the recomputed effective stats.
 
 **Unequip Item:**
-- **Endpoint:** `POST /api/v1/character/{id}/unequip`
-- **Request:** Slot to empty
-- **Process:** Remove item from slot, return to inventory, recalculate stats
-- **Response:** Updated character stats and empty slot
-
-**Equipment Inventory:**
-- **Endpoint:** `GET /api/v1/character/{id}/inventory`
-- **Returns:** All owned but unequipped items
-- **Process:** Filter by item type, sort by various criteria
-- **Response:** List of available items with properties and costs
-
-**Equipment Shop Integration:**
-- **Endpoint:** `GET /api/v1/shop/equipment`
-- **Returns:** Available equipment for purchase filtered by character level
-- **Process:** Show equipment that character can equip based on level and class
-- **Response:** Equipment details, costs, stat bonuses
+- **Endpoint:** `DELETE /api/v1/profile/character/{id}/unequip/{slot}` where `slot ∈ {armor, utility, weapon}`.
+- **Auth:** Sanctum + ownership policy.
+- **Behavior:** If the slot is empty, returns 404. Otherwise clears the slot and returns the updated `CharacterEquipmentResource`.
 
 **Stat Recalculation:**
-- **Process:** Automatically recalculate character stats when equipment changes
-- **Logic:** Base stats + equipment bonuses = final stats
-- **Validation:** Ensure no stat exceeds maximum caps
+- Equipment changes do not mutate base character columns. The engine resolves equipment contributions at battle init via Forever buffs (see `mech_item_buff_application`). The dashboard composes effective stats client-side via the equipment summary in `CharacterResource`.
 
-**API Response Format:**
-```json
-{
-  "character_id": "uuid",
-  "equipment": {
-    "armor": {
-      "item_id": "uuid",
-      "name": "Iron Armor",
-      "slot": "armor",
-      "stat_bonuses": {
-        "defense": 5,
-        "armor_rating": 3
-      }
-    },
-    "utility": {...},
-    "weapon": {...}
-  },
-  "total_stats": {
-    "attack": 15,
-    "defense": 10,
-    "movement": 3
-  }
-}
-```
+**Inventory & Purchase (separate atoms):**
+- Inventory list: see `api_inventory_list` (`GET /v1/profile/inventory`).
+- Shop browse / purchase: see `api_shop_browse`, `api_shop_purchase`.
 
 ## TECHNICAL INTERFACE (The Bridge)
 - **Code Tag:** `@spec-link [[api_equipment_management]]`
-- **Controller:** `EquipmentController`
-- **Model:** `App\Models\Character` (Laravel), `App\Models\Equipment`
+- **Controller:** `EquipmentController` (Laravel)
+- **Models:** `App\Models\Character`, `App\Models\CharacterEquipment`, `App\Models\PlayerInventory`, `App\Models\ShopItem`
+- **Policy:** `CharacterPolicy::equip`, `CharacterPolicy::unequip`

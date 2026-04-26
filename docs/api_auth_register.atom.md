@@ -11,6 +11,7 @@ parents:
   - [[api_laravel_gateway]]
   - [[api_standard_envelope]]
 dependents:
+  - [[mechanic_mech_cli_sensitive_data_masking]]
   - [[upsilonbattle:mechanic_mech_cli_sensitive_data_masking]]
 ---
 # Player Registration API

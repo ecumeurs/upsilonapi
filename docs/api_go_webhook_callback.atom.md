@@ -10,8 +10,7 @@ tags: [api, golang, callback, webhooks]
 parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
-dependents:
-  - [[upsilonbattle:mech_game_state_versioning]]
+dependents: []
 ---
 # UpsilonBattle Webhook Callback
 

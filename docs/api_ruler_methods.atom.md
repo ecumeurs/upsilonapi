@@ -10,6 +10,9 @@ tags: [api, messaging, queue]
 parents:
   - [[domain_ruler_state]]
 dependents:
+  - [[mech_controller_communication_sequence]]
+  - [[rule_battle_readiness]]
+  - [[rule_ruler_test_robustness]]
   - [[shared:rule_battle_readiness]]
   - [[shared:rule_ruler_test_robustness]]
   - [[api_controller_methods]]

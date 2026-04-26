@@ -10,7 +10,9 @@ tags: [auth, login, api]
 parents:
   - [[shared:uc_player_login]]
 dependents:
+  - [[mechanic_mech_cli_sensitive_data_masking]]
   - [[shared:uc_player_login]]
+  - [[uc_player_login]]
   - [[upsilonbattle:mechanic_mech_cli_sensitive_data_masking]]
 ---
 # Player Login API
