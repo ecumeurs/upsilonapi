@@ -10,8 +10,7 @@ tags: [api, shop, catalog, iss-074]
 parents:
   - [[entity_shop_item]]
   - [[mec_credit_spending_shop]]
-dependents:
-  - [[ui_shop]]
+dependents: []
 ---
 
 # New Atom

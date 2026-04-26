@@ -18,17 +18,26 @@ type ArenaActionRequest struct {
 
 // @spec-link [[entity_character]]
 type Entity struct {
-	ID       string   `json:"id"`
-	PlayerID string   `json:"player_id"`
-	Team     int      `json:"team"`
-	Name     string   `json:"name"`
-	HP       int      `json:"hp"`
-	MaxHP    int      `json:"max_hp"`
-	Attack   int      `json:"attack"`
-	Defense  int      `json:"defense"`
-	Move     int      `json:"move"`
-	MaxMove  int      `json:"max_move"`
-	Position Position `json:"position"` // not used at start
+	ID             string         `json:"id"`
+	PlayerID       string         `json:"player_id"`
+	Team           int            `json:"team"`
+	Name           string         `json:"name"`
+	HP             int            `json:"hp"`
+	MaxHP          int            `json:"max_hp"`
+	Attack         int            `json:"attack"`
+	Defense        int            `json:"defense"`
+	Move           int            `json:"move"`
+	MaxMove        int            `json:"max_move"`
+	Position       Position       `json:"position"` // not used at start
+	EquippedItems  []EquippedItem `json:"equipped_items"`
+	EquippedSkills []string       `json:"equipped_skills"` // reserved for ISS-073
+}
+
+type EquippedItem struct {
+	ItemID     string         `json:"item_id"`
+	Name       string         `json:"name"`
+	Slot       string         `json:"slot"`
+	Properties map[string]any `json:"properties"`
 }
 
 // @spec-link [[entity_player]]

@@ -10,7 +10,9 @@ tags: [api, equipment, inventory]
 parents:
   - [[upsilonbattle:entity_equipment_system]]
   - [[upsilonbattle:mec_three_slot_equipment_system]]
-dependents: []
+dependents:
+  - [[ui_character_equipment_panel]]
+  - [[ui_inventory]]
 ---
 
 # Equipment Management API

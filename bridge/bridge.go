@@ -18,6 +18,7 @@ import (
 	"github.com/ecumeurs/upsilonbattle/battlearena/controller/controllers"
 	"github.com/ecumeurs/upsilonbattle/battlearena/entity"
 	"github.com/ecumeurs/upsilonbattle/battlearena/property"
+	"github.com/ecumeurs/upsilonbattle/battlearena/property/def"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
@@ -35,6 +36,12 @@ type ArenaBridge struct {
 	arenas map[uuid.UUID]*battlearena.BattleArena
 	// @spec-link [[mech_game_state_versioning]]
 	lastSentWebhookVersion map[uuid.UUID]int64
+}
+
+var propertyAliasMap = map[string]string{
+	"ArmorRating": "Armor",
+	"CritChance":  "CriticalChance",
+	"CritDamage":  "CriticalMultiplier",
 }
 
 var bridge = &ArenaBridge{
@@ -128,6 +135,51 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			e.RepsertPropertyValue(property.Attack, ee.Attack)
 			e.RepsertPropertyValue(property.Defense, ee.Defense)
 			e.RepsertPropertyValue(property.TeamID, p.Team)
+
+			// Load equipped items as buffs
+			// @spec-link [[mec_item_buff_application]]
+			for _, item := range ee.EquippedItems {
+				itemID, err := uuid.Parse(item.ItemID)
+				if err != nil {
+					log.Printf("[ArenaBridge] Skipping item %s for entity %s: invalid UUID", item.Name, ee.Name)
+					continue
+				}
+
+				buff := property.TemporaryProperties{
+					Forever:        true,
+					OriginEntityID: itemID,
+					Properties:     make(map[string]property.Property),
+				}
+
+				for key, raw := range item.Properties {
+					// Handle common aliases (e.g. ArmorRating -> Armor)
+					effectiveKey := key
+					if alias, ok := propertyAliasMap[effectiveKey]; ok {
+						effectiveKey = alias
+					}
+
+					// Map string key to Property. Item properties take priority, then Entity properties.
+					var p property.Property
+					if prop := def.ItemProperty(property.ItemProperties(effectiveKey)); prop != nil {
+						p = prop
+					} else if prop := def.EntityProperty(property.EntityProperties(effectiveKey)); prop != nil {
+						p = prop
+					}
+
+					if p != nil {
+						// Handle JSON number decoding (float64 to int)
+						if f, ok := raw.(float64); ok {
+							p.Set(int(f))
+						} else if i, ok := raw.(int); ok {
+							p.Set(i)
+						} else {
+							p.Set(raw)
+						}
+						buff.Properties[property.PropertyToString(effectiveKey)] = p
+					}
+				}
+				e.RegisterBuff(buff)
+			}
 
 			battleArena.Ruler.AddEntity(e)
 		}
