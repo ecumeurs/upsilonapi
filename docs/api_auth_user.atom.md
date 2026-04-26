@@ -6,9 +6,7 @@ layer: ARCHITECTURE
 tags: [api, auth, account, gdpr]
 parents:
   - [[shared:requirement_customer_user_account]]
-dependents:
-  - [[mechanic_mech_cli_sensitive_data_masking]]
-  - [[upsilonbattle:mechanic_mech_cli_sensitive_data_masking]]
+dependents: []
 human_name: User Authentication & Account API
 priority: 5
 version: 1.0

@@ -8,10 +8,7 @@ status: STABLE
 priority: 5
 tags: [database, postgresql, state]
 parents: []
-dependents:
-  - [[entity_game_match]]
-  - [[entity_users]]
-  - [[upsilonbattle:entity_game_match]]
+dependents: []
 ---
 # PostgreSQL Database Persistence
 

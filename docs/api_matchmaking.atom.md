@@ -9,8 +9,7 @@ priority: 5
 tags: [matchmaking, queue, api]
 parents:
   - [[shared:uc_matchmaking]]
-dependents:
-  - [[api_websocket_user_notifications]]
+dependents: []
 ---
 # Matchmaking API
 
