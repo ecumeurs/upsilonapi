@@ -17,8 +17,10 @@ import (
 	"github.com/ecumeurs/upsilonbattle/battlearena"
 	"github.com/ecumeurs/upsilonbattle/battlearena/controller/controllers"
 	"github.com/ecumeurs/upsilontypes/entity"
+	"github.com/ecumeurs/upsilontypes/entity/skill"
 	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/ecumeurs/upsilontypes/property/def"
+	"github.com/ecumeurs/upsilontypes/property/effect"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
@@ -81,15 +83,15 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	b.arenas[matchID] = battleArena
 	b.mu.Unlock()
 
-	// Default to a tactically interesting 8x8. 
-	// Tuned per [[ISS-087]] to reduce sparseness in 1v1 and enable obstructions.
+	// Default to a reliable 7x7 for both tests and production baseline.
+	// Reduced from 8x8/Hill to 7x7/Flat to avoid impassable cliffs that break bot navigation (ISS-087).
 	gg := gridgenerator.GridGenerator{
-		Width:                tools.NewIntRange(8, 9),
-		Length:               tools.NewIntRange(8, 9),
-		Height:               tools.NewIntRange(5, 7),
-		Type:                 gridgenerator.Hill,
-		GenerateObstrcution:  true,
-		ObstructionRate:      tools.NewIntRange(5, 12), // 5-12% obstruction for tactical depth
+		Width:               tools.NewIntRange(7, 8),
+		Length:              tools.NewIntRange(7, 8),
+		Height:              tools.NewIntRange(2, 3),
+		Type:                gridgenerator.Flat,
+		GenerateObstrcution: true,
+		ObstructionRate:     tools.NewIntRange(2, 8), // 2-8% obstruction for manageable tactical depth
 	}
 	battleArena.Ruler.SetGrid(gg.Generate())
 	battleArena.Ruler.SetNbControllers(len(start.Players))
@@ -124,7 +126,8 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 				Name:         ee.Name,
 				ControllerID: playerID,
 			}
-			e.Properties = make(map[string]property.Property) // Ensure properties map is initialized
+			e.Properties = make(map[string]property.Property)
+			e.Skills = make(map[uuid.UUID]skill.Skill)
 			if ee.Position.X != 0 || ee.Position.Y != 0 {
 				e.Position = position.New(ee.Position.X, ee.Position.Y, battleArena.Ruler.GameState.Grid.TopMostGroundAt(ee.Position.X, ee.Position.Y))
 			}
@@ -180,6 +183,26 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					}
 				}
 				e.RegisterBuff(buff)
+			}
+
+			// Load equipped skills from payload
+			// @spec-link [[mec_skill_payload_resolution]]
+			// @spec-link [[api_character_skill_inventory]]
+			for _, es := range ee.EquippedSkills {
+				skillID, err := uuid.Parse(es.SkillID)
+				if err != nil {
+					log.Printf("[ArenaBridge] Skipping skill %s for entity %s: invalid UUID", es.Name, ee.Name)
+					continue
+				}
+				s := skill.Skill{
+					ID:        skillID,
+					Name:      es.Name,
+					Behavior:  *def.MakeBehaviorProperty(parseBehaviorType(es.Behavior)),
+					Targeting: buildSkillPropertyMap(es.Targeting),
+					Costs:     buildSkillPropertyMap(es.Costs),
+					Effect:    buildSkillEffect(es.Effect),
+				}
+				e.RegisterSkill(s)
 			}
 
 			battleArena.Ruler.AddEntity(e)
@@ -443,4 +466,81 @@ func (b *ArenaBridge) GetActiveMatchCount() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return len(b.arenas)
+}
+
+// ── Skill payload helpers ─────────────────────────────────────────────────
+
+// parseBehaviorType converts the wire string to a def.BehaviorType.
+// @spec-link [[mec_skill_payload_resolution]]
+func parseBehaviorType(s string) def.BehaviorType {
+	switch s {
+	case "Reaction":
+		return def.BehaviorTypeReaction
+	case "Passive":
+		return def.BehaviorTypePassive
+	case "Counter":
+		return def.BehaviorTypeCounter
+	case "Trap":
+		return def.BehaviorTypeTrap
+	default:
+		return def.BehaviorTypeDirect
+	}
+}
+
+// setSkillPropValue applies a JSON-decoded value to a property.Property.
+// Supports plain float64 (int wire) and {"value":X,"max":Y} for counters.
+func setSkillPropValue(prop property.Property, val interface{}) bool {
+	switch v := val.(type) {
+	case float64:
+		prop.Set(int(v))
+		return true
+	case map[string]interface{}:
+		cp, ok := prop.(property.IntCounterProperty)
+		if !ok {
+			return false
+		}
+		if raw, ok := v["value"]; ok {
+			if f, ok := raw.(float64); ok {
+				cp.SetValue(int(f))
+			}
+		}
+		if raw, ok := v["max"]; ok {
+			if f, ok := raw.(float64); ok {
+				cp.SetMaxValue(int(f))
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// buildSkillPropertyMap reconstructs a Targeting or Costs property map from
+// the JSON payload. Unknown keys are silently skipped.
+func buildSkillPropertyMap(raw map[string]interface{}) map[string]property.Property {
+	result := make(map[string]property.Property)
+	for key, val := range raw {
+		prop := def.SkillProperty(property.SkillProperties(key))
+		if prop == nil {
+			continue
+		}
+		if setSkillPropValue(prop, val) {
+			result[key] = prop
+		}
+	}
+	return result
+}
+
+// buildSkillEffect reconstructs an effect.Effect from the JSON payload.
+func buildSkillEffect(raw map[string]interface{}) effect.Effect {
+	eff := *effect.New()
+	for key, val := range raw {
+		prop := def.SkillProperty(property.SkillProperties(key))
+		if prop == nil {
+			continue
+		}
+		if setSkillPropValue(prop, val) {
+			eff.Properties = append(eff.Properties, prop)
+		}
+	}
+	return eff
 }

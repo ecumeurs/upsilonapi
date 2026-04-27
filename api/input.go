@@ -31,7 +31,19 @@ type Entity struct {
 	Position       Position       `json:"position"` // not used at start
 	EquippedItems  []EquippedItem `json:"equipped_items"`
 	Buffs          []Buff         `json:"buffs"`           // Added for engine state transparency [[mec_item_buff_application]]
-	EquippedSkills []string       `json:"equipped_skills"` // reserved for ISS-073
+	EquippedSkills []EquippedSkill `json:"equipped_skills"`
+}
+
+// @spec-link [[api_character_skill_inventory]]
+// @spec-link [[mec_skill_payload_resolution]]
+type EquippedSkill struct {
+	SkillID   string                 `json:"skill_id"`
+	Name      string                 `json:"name"`
+	Behavior  string                 `json:"behavior"`
+	Targeting map[string]interface{} `json:"targeting"`
+	Costs     map[string]interface{} `json:"costs"`
+	Effect    map[string]interface{} `json:"effect"`
+	Origin    string                 `json:"origin,omitempty"` // "inventory" | "item:<item_id>"
 }
 
 type Buff struct {
