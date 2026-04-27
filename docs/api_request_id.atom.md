@@ -11,8 +11,6 @@ parents: []
 dependents:
   - [[req_logging_traceability]]
   - [[rule_tracing_logging]]
-  - [[shared:req_logging_traceability]]
-  - [[shared:rule_tracing_logging]]
   - [[api_standard_envelope]]
 ---
 # API Request Identification

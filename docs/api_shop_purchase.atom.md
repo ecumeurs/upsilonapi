@@ -8,12 +8,11 @@ type: API
 priority: 5
 tags: [api, shop, purchase, iss-074]
 parents:
-  - [[entity_player_credits]]
-  - [[entity_player_inventory]]
-  - [[mec_credit_spending_shop]]
+  - [[upsilonbattle:entity_player_credits]]
+  - [[upsilonbattle:entity_player_inventory]]
+  - [[upsilonbattle:mec_credit_spending_shop]]
 dependents:
   - [[battleui:ui_shop]]
-  - [[ui_shop]]
 ---
 
 # New Atom

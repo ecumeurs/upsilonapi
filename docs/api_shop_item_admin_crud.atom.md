@@ -4,8 +4,7 @@ status: STABLE
 parents:
   - [[entity_shop_item]]
   - [[rule_admin_content_authority]]
-dependents:
-  - [[api_shop_browse]]
+dependents: []
 type: API
 layer: ARCHITECTURE
 version: 2.0

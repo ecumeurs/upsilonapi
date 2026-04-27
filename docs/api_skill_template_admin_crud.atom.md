@@ -7,9 +7,7 @@ version: 2.0
 parents:
   - [[entity_skill_template]]
   - [[rule_admin_content_authority]]
-dependents:
-  - [[api_character_skill_inventory]]
-  - [[api_skill_template_browse]]
+dependents: []
 tags: [api, skills, admin, crud, iss-086]
 human_name: Admin Skill Template CRUD API
 type: API

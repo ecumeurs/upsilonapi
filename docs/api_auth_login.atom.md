@@ -9,7 +9,9 @@ priority: 5
 tags: [auth, login, api]
 parents:
   - [[shared:uc_player_login]]
-dependents: []
+dependents:
+  - [[uc_player_login]]
+  - [[upsilonbattle:mechanic_mech_cli_sensitive_data_masking]]
 ---
 # Player Login API
 

@@ -12,7 +12,6 @@ parents:
   - [[api_standard_envelope]]
 dependents:
   - [[battleui:battleui_api_dtos]]
-  - [[battleui_api_dtos]]
 ---
 # UpsilonBattle Arena Start API
 

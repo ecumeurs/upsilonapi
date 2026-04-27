@@ -2,8 +2,7 @@
 id: api_skill_template_browse
 status: STABLE
 human_name: Skill Template Browse API
-dependents:
-  - [[api_character_skill_inventory]]
+dependents: []
 layer: ARCHITECTURE
 priority: 5
 tags: [api, skills, templates, catalog, iss-086]

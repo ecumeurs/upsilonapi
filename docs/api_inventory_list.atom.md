@@ -3,14 +3,13 @@ id: api_inventory_list
 status: STABLE
 tags: [api, inventory, iss-074]
 parents:
-  - [[entity_player_inventory]]
-  - [[mec_shop_inventory_system]]
+  - [[upsilonbattle:entity_player_inventory]]
+  - [[upsilonbattle:mec_shop_inventory_system]]
 type: API
 version: 2.0
 human_name: Player Inventory List API
 dependents:
   - [[battleui:ui_inventory]]
-  - [[ui_inventory]]
 layer: ARCHITECTURE
 priority: 5
 ---
