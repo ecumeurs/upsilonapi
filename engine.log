@@ -285,3 +285,4 @@ time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=me
 time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3e"
 time="2026-04-26T19:22:42Z" level=info msg="Stopping message queue" component=messagequeue name="Controller 019dcb3e"
 [GIN] 2026/04/26 - 19:22:42 | 412 | 62.615µs |             ::1 | POST     "/internal/arena/019dcb3e-045e-717d-bd58-d4614861eefe/forfeit"
+[GIN] 2026/04/27 - 07:13:58 | 404 |    271ns |             ::1 | POST     "/v1/arena/start"

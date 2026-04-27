@@ -98,7 +98,9 @@ func HandleArenaAction(c *gin.Context) {
 		}
 
 	case rulermethods.ControllerMoveReply:
-		res = api.NewEntity(d.Entity)
+		res = gin.H{
+			"entity": api.NewEntity(d.Entity),
+		}
 
 	default:
 		// end of turn
