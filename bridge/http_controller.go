@@ -239,6 +239,9 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 		return
 	}
 
+	// Note: http.Post is blocking the actor's goroutine. 
+	// While latency is currently low (a few ms), this should be moved to an asynchronous pattern 
+	// (e.g. a worker pool or a dedicated notifier actor) for better efficiency in the future.
 	resp, err := http.Post(hc.CallbackURL, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		logrus.Errorf("Failed to send webhook: %v", err)

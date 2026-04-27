@@ -71,6 +71,7 @@ func HandleArenaAction(c *gin.Context) {
 				Damage:   r.Damage,
 				PrevHP:   r.PrevHP,
 				NewHP:    r.NewHP,
+				Credits:  mapCreditsToApi(r.CreditAwards),
 			}
 		}
 		res = gin.H{
@@ -88,6 +89,7 @@ func HandleArenaAction(c *gin.Context) {
 				Heal:     r.Heal,
 				PrevHP:   r.PrevHP,
 				NewHP:    r.NewHP,
+				Credits:  mapCreditsToApi(r.CreditAwards),
 			}
 		}
 		res = gin.H{
@@ -143,4 +145,19 @@ func HandleGetActiveMatchStats(c *gin.Context) {
 	c.JSON(http.StatusOK, api.NewSuccess("", "Active match stats retrieved", api.ActiveMatchStatsResponse{
 		ActiveCount: count,
 	}))
+}
+
+func mapCreditsToApi(awards []rulermethods.CreditAward) []api.CreditAward {
+	if len(awards) == 0 {
+		return nil
+	}
+	res := make([]api.CreditAward, len(awards))
+	for i, a := range awards {
+		res[i] = api.CreditAward{
+			PlayerID: a.PlayerID.String(),
+			Amount:   a.Amount,
+			Source:   a.Source,
+		}
+	}
+	return res
 }
