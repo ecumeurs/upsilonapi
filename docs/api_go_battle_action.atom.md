@@ -36,9 +36,10 @@ Standard response with updated entity state or result.
 - **Go Handler:** `handler.HandleArenaAction`
 - **Request Type:** `api.ArenaActionRequest`
 - **Response Map:**
-  - `rulermethods.ControllerAttackReply` -> `api.NewEntity(d.Entity)`
-  - `rulermethods.ControllerMoveReply` -> `api.NewEntity(d.Entity)`
-  - Default -> `stdmessage.DataNil{}`
+  - `Attack/Skill`: Returns `gin.H` with `results` (ActionResults) and `attacker`/`entity`.
+  - `Move`: Returns `gin.H` with `results` (path/HP deltas) and `entity`.
+  - `Credits`: Mapped into `results` or top-level depending on action type.
+- **Versioning:** No `Version` field in synchronous reply (broadcast only).
 
 ## EXPECTATION (For Testing)
 - Valid `ArenaActionRequest` -> Ruler processes action -> Returns `200 OK`.
