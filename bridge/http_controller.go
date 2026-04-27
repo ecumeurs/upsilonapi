@@ -239,25 +239,26 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 		return
 	}
 
-	// Note: http.Post is blocking the actor's goroutine. 
-	// While latency is currently low (a few ms), this should be moved to an asynchronous pattern 
-	// (e.g. a worker pool or a dedicated notifier actor) for better efficiency in the future.
-	resp, err := http.Post(hc.CallbackURL, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		logrus.Errorf("Failed to send webhook: %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		logrus.Warnf("Webhook returned non-OK status: %d", resp.StatusCode)
-	}
-
 	// @spec-link [[mech_arena_lifecycle]]
-	if payload.EventType == "game.ended" {
-		logrus.Infof("Battle %s ended, triggering arena destruction", hc.MatchID)
-		Get().DestroyArena(hc.MatchID)
-	}
+	// @spec-link [[mech_webhook_delivery]]
+	// Asynchronous webhook delivery (ISS-099) to prevent blocking the actor loop.
+	go func() {
+		resp, err := http.Post(hc.CallbackURL, "application/json", bytes.NewBuffer(jsonData))
+		if err != nil {
+			logrus.Errorf("Failed to send webhook: %v", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			logrus.Warnf("Webhook returned non-OK status: %d", resp.StatusCode)
+		}
+
+		if payload.EventType == "game.ended" {
+			logrus.Infof("Battle %s ended, triggering arena destruction", hc.MatchID)
+			Get().DestroyArena(hc.MatchID)
+		}
+	}()
 }
 
 func (hc *HTTPController) getEventName(content interface{}) string {
