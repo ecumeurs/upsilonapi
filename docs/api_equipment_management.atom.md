@@ -4,7 +4,7 @@ human_name: Equipment Management API
 type: API
 layer: ARCHITECTURE
 version: 2.1
-status: DRAFT
+status: STABLE
 priority: 5
 tags: [api, equipment, inventory]
 parents:

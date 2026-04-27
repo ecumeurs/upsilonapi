@@ -1,6 +1,6 @@
 ---
 id: api_inventory_list
-status: DRAFT
+status: STABLE
 tags: [api, inventory, iss-074]
 parents:
   - [[entity_player_inventory]]

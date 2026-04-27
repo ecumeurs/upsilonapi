@@ -1,6 +1,6 @@
 ---
 id: api_shop_purchase
-status: DRAFT
+status: STABLE
 layer: ARCHITECTURE
 version: 2.0
 human_name: Shop Purchase API

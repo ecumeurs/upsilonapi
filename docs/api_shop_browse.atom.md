@@ -1,6 +1,6 @@
 ---
 id: api_shop_browse
-status: DRAFT
+status: STABLE
 layer: ARCHITECTURE
 version: 2.0
 priority: 5
