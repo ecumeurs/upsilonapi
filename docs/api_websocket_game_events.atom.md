@@ -7,7 +7,6 @@ parents:
   - [[api_websocket]]
 dependents:
   - [[api_websocket_arena_updates]]
-  - [[api_websocket_user_notifications]]
 type: API
 priority: 3
 tags: websocket,game,events,real-time

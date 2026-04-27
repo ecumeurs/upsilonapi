@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/ecumeurs/upsilonapi/api"
-	"github.com/ecumeurs/upsilonbattle/battlearena/property"
+	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )

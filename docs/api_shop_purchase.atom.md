@@ -11,7 +11,9 @@ parents:
   - [[entity_player_credits]]
   - [[entity_player_inventory]]
   - [[mec_credit_spending_shop]]
-dependents: []
+dependents:
+  - [[battleui:ui_shop]]
+  - [[ui_shop]]
 ---
 
 # New Atom
