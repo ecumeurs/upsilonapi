@@ -21,10 +21,12 @@ import (
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	internal := r.Group("/internal")
+	v1 := r.Group("/v1")
 	{
-		internal.POST("/arena/start", handler.HandleArenaStart)
-		internal.POST("/arena/:id/action", handler.HandleArenaAction)
+		v1.POST("/arena/start", handler.HandleArenaStart)
+		v1.POST("/arena/:id/action", handler.HandleArenaAction)
+		v1.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
+		v1.POST("/skills/generate", handler.HandleSkillGenerate)
 	}
 	return r
 }
