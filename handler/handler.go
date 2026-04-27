@@ -63,7 +63,37 @@ func HandleArenaAction(c *gin.Context) {
 
 	switch d := data.(type) {
 	case rulermethods.ControllerAttackReply:
-		res = api.NewEntity(d.Entity)
+		// Map detailed results for synchronous feedback
+		results := make([]api.ActionResult, len(d.Results))
+		for i, r := range d.Results {
+			results[i] = api.ActionResult{
+				TargetID: r.TargetID.String(),
+				Damage:   r.Damage,
+				PrevHP:   r.PrevHP,
+				NewHP:    r.NewHP,
+			}
+		}
+		res = gin.H{
+			"attacker": api.NewEntity(d.Attacker),
+			"results":  results,
+		}
+
+	case rulermethods.ControllerUseSkillReply:
+		// Map detailed results for synchronous feedback
+		results := make([]api.ActionResult, len(d.Results))
+		for i, r := range d.Results {
+			results[i] = api.ActionResult{
+				TargetID: r.TargetID.String(),
+				Damage:   r.Damage,
+				Heal:     r.Heal,
+				PrevHP:   r.PrevHP,
+				NewHP:    r.NewHP,
+			}
+		}
+		res = gin.H{
+			"attacker": api.NewEntity(d.Attacker),
+			"results":  results,
+		}
 
 	case rulermethods.ControllerMoveReply:
 		res = api.NewEntity(d.Entity)

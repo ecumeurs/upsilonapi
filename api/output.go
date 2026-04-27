@@ -28,6 +28,20 @@ type ActiveMatchStatsResponse struct {
 	ActiveCount int `json:"active_count"`
 }
 
+// SkillGenerateResponse is the payload returned by POST /v1/skills/generate.
+// @spec-link [[api_skill_generate_engine]]
+type SkillGenerateResponse struct {
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	Behavior       string         `json:"behavior"`
+	Targeting      map[string]any `json:"targeting"`
+	Costs          map[string]any `json:"costs"`
+	Effect         map[string]any `json:"effect"`
+	Grade          string         `json:"grade"`
+	WeightPositive int            `json:"weight_positive"`
+	WeightNegative int            `json:"weight_negative"`
+}
+
 // @spec-link [[entity_grid]]
 
 // Cell is the topmost cell at a given (x, y) column of the engine grid.
@@ -61,17 +75,25 @@ type CreditAward struct {
 	Source   string `json:"source"` // damage, healing, status
 }
 
+// ActionResult provides explicit data about the impact on a single target.
+type ActionResult struct {
+	TargetID string         `json:"target_id"`
+	Damage   int            `json:"damage,omitempty"`
+	Heal     int            `json:"heal,omitempty"`
+	PrevHP   int            `json:"prev_hp"`
+	NewHP    int            `json:"new_hp"`
+	Credits  []CreditAward  `json:"credits,omitempty"`
+}
+
 // ActionFeedback provides explicit data about the last tactical action.
 // @spec-link [[api_go_action_feedback]]
 type ActionFeedback struct {
-	Type     string              `json:"type"` // "move", "attack", "pass"
+	Type     string              `json:"type"` // "move", "attack", "skill", "pass"
 	ActorID  string              `json:"actor_id"`
-	TargetID string              `json:"target_id,omitempty"`
+	TargetID string              `json:"target_id,omitempty"` // Legacy/Primary target
 	Path     []position.Position `json:"path,omitempty"`
-	Damage   int                 `json:"damage,omitempty"`
-	PrevHP   int                 `json:"prev_hp,omitempty"`
-	NewHP    int                 `json:"new_hp,omitempty"`
-	Credits  []CreditAward       `json:"credits,omitempty"`
+	Results  []ActionResult      `json:"results,omitempty"`
+	Credits  []CreditAward       `json:"credits,omitempty"` // Global action credits
 }
 
 // BoardState represents the current state of the board.

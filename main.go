@@ -31,18 +31,19 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "revision": rev})
 	})
 
-	// Internal Arena Management
-	internal := r.Group("/internal")
-	{
-		internal.POST("/arena/start", handler.HandleArenaStart)
-		internal.POST("/arena/:id/action", handler.HandleArenaAction)
-		internal.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
-	}
-
 	// V1 API
 	v1 := r.Group("/v1")
 	{
+		// Arena lifecycle
+		v1.POST("/arena/start", handler.HandleArenaStart)
+		v1.POST("/arena/:id/action", handler.HandleArenaAction)
+		v1.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
+
+		// Match stats
 		v1.GET("/match/stats/active", handler.HandleGetActiveMatchStats)
+
+		// Skill generation
+		v1.POST("/skills/generate", handler.HandleSkillGenerate)
 	}
 
 	if err := r.Run(":8081"); err != nil {

@@ -83,6 +83,24 @@ func (hc *HTTPController) mapCredits(awards []rulermethods.CreditAward) []api.Cr
 	return res
 }
 
+func (hc *HTTPController) mapResults(results []rulermethods.ActionResult) []api.ActionResult {
+	if len(results) == 0 {
+		return nil
+	}
+	res := make([]api.ActionResult, len(results))
+	for i, r := range results {
+		res[i] = api.ActionResult{
+			TargetID: r.TargetID.String(),
+			Damage:   r.Damage,
+			Heal:     r.Heal,
+			PrevHP:   r.PrevHP,
+			NewHP:    r.NewHP,
+			Credits:  hc.mapCredits(r.CreditAwards),
+		}
+	}
+	return res
+}
+
 func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	var action *api.ActionFeedback
 	switch d := ctx.Msg.TargetMethod.(type) {
@@ -91,17 +109,28 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 			Type:     "attack",
 			ActorID:  d.AttackerControllerID.String(),
 			TargetID: d.Entity.ID.String(),
-			Damage:   d.Damage,
-			PrevHP:   d.PrevHP,
-			NewHP:    d.NewHP,
-			Credits:  hc.mapCredits(d.CreditAwards),
+			Results: []api.ActionResult{
+				{
+					TargetID: d.Entity.ID.String(),
+					Damage:   d.Damage,
+					PrevHP:   d.PrevHP,
+					NewHP:    d.NewHP,
+					Credits:  hc.mapCredits(d.CreditAwards),
+				},
+			},
+			Credits: hc.mapCredits(d.CreditAwards),
 		}
 	case rulermethods.ControllerSkillUsed:
 		action = &api.ActionFeedback{
-			Type:     "skill",
-			ActorID:  d.EmitterControllerID.String(),
-			TargetID: d.Entity.ID.String(),
-			Credits:  hc.mapCredits(d.CreditAwards),
+			Type:    "skill",
+			ActorID: d.EmitterControllerID.String(),
+			Results: []api.ActionResult{
+				{
+					TargetID: d.Entity.ID.String(),
+					Credits:  hc.mapCredits(d.CreditAwards),
+				},
+			},
+			Credits: hc.mapCredits(d.CreditAwards),
 		}
 	case rulermethods.ControllerMoved:
 		action = &api.ActionFeedback{

@@ -102,7 +102,7 @@ func TestArenaStartEndpoint(t *testing.T) {
 		},
 		Meta: stdmessage.MetaNil{},
 	})
-	req, _ := http.NewRequest("POST", "/internal/arena/start", bytes.NewBuffer(reqBody))
+	req, _ := http.NewRequest("POST", "/v1/arena/start", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -219,7 +219,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 		Meta: stdmessage.MetaNil{},
 	})
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/internal/arena/start", bytes.NewBuffer(reqBody))
+	req, _ := http.NewRequest("POST", "/v1/arena/start", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -279,7 +279,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 		},
 	})
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/internal/arena/"+arenaID+"/action", bytes.NewBuffer(moveReqBody))
+	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(moveReqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 	log.Printf("MOVE status: %d, response: %s", w.Code, w.Body.String())
@@ -300,7 +300,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 		},
 	})
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/internal/arena/"+arenaID+"/action", bytes.NewBuffer(attackReqBody))
+	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(attackReqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 	log.Printf("ATTACK status: %d, response: %s", w.Code, w.Body.String())
@@ -316,7 +316,7 @@ func TestBattleFullRoundtrip(t *testing.T) {
 		},
 	})
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/internal/arena/"+arenaID+"/action", bytes.NewBuffer(passReqBody))
+	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(passReqBody))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 	log.Printf("PASS status: %d, response: %s", w.Code, w.Body.String())
