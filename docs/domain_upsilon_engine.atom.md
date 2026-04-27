@@ -17,8 +17,6 @@ dependents:
   - [[domain_upsilon_engine_domain_upsilon_engine_expectation]]
   - [[domain_upsilon_engine_domain_upsilon_engine_resolution]]
   - [[domain_upsilon_engine_domain_upsilon_engine_technical_interface]]
-  - [[upsilonbattle:mechanic_backstab_detection_algorithm]]
-  - [[upsilonbattle:module_actor_concurrency]]
 ---
 # UpsilonBattle Core Engine Domain
 

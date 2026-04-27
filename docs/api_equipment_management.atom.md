@@ -13,6 +13,8 @@ parents:
 dependents:
   - [[battleui:ui_character_equipment_panel]]
   - [[battleui:ui_inventory]]
+  - [[ui_character_equipment_panel]]
+  - [[ui_inventory]]
 ---
 
 # Equipment Management API

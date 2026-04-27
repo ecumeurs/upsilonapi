@@ -10,6 +10,7 @@ version: 2.0
 human_name: Player Inventory List API
 dependents:
   - [[battleui:ui_inventory]]
+  - [[ui_inventory]]
 layer: ARCHITECTURE
 priority: 5
 ---

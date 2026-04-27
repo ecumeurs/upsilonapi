@@ -149,6 +149,23 @@ func HandleGetActiveMatchStats(c *gin.Context) {
 	}))
 }
 
+// HandleArenaExists checks if an arena exists.
+// @spec-link [[api_arena_existence_check]]
+func HandleArenaExists(c *gin.Context) {
+	idStr := c.Param("id")
+	arenaID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", "invalid arena id"))
+		return
+	}
+
+	_, exists := bridge.Get().GetArena(arenaID)
+
+	c.JSON(http.StatusOK, api.NewSuccess("", "Existence check complete", api.ArenaExistsResponse{
+		Exists: exists,
+	}))
+}
+
 func mapCreditsToApi(awards []rulermethods.CreditAward) []api.CreditAward {
 	if len(awards) == 0 {
 		return nil

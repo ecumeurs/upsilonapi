@@ -38,6 +38,7 @@ func main() {
 		v1.POST("/arena/start", handler.HandleArenaStart)
 		v1.POST("/arena/:id/action", handler.HandleArenaAction)
 		v1.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
+		v1.GET("/arena/:id/exists", handler.HandleArenaExists)
 
 		// Match stats
 		v1.GET("/match/stats/active", handler.HandleGetActiveMatchStats)

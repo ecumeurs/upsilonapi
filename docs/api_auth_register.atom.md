@@ -10,8 +10,7 @@ tags: [auth, register, api]
 parents:
   - [[api_laravel_gateway]]
   - [[api_standard_envelope]]
-dependents:
-  - [[upsilonbattle:mechanic_mech_cli_sensitive_data_masking]]
+dependents: []
 ---
 # Player Registration API
 

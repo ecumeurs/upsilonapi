@@ -11,6 +11,7 @@ parents:
   - [[api_request_id]]
 dependents:
   - [[rule_tracing_logging]]
+  - [[shared:rule_tracing_logging]]
   - [[api_auth_logout]]
   - [[api_auth_register]]
   - [[api_battle_proxy]]

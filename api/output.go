@@ -28,6 +28,10 @@ type ActiveMatchStatsResponse struct {
 	ActiveCount int `json:"active_count"`
 }
 
+type ArenaExistsResponse struct {
+	Exists bool `json:"exists"`
+}
+
 // SkillGenerateResponse is the payload returned by POST /v1/skills/generate.
 // @spec-link [[api_skill_generate_engine]]
 type SkillGenerateResponse struct {

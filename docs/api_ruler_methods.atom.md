@@ -10,10 +10,7 @@ tags: [api, messaging, queue]
 parents:
   - [[domain_ruler_state]]
 dependents:
-  - [[rule_battle_readiness]]
-  - [[rule_ruler_test_robustness]]
   - [[api_controller_methods]]
-  - [[upsilonbattle:mech_controller_communication_sequence]]
 ---
 # Ruler Message Methods API
 

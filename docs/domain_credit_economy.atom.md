@@ -9,13 +9,7 @@ priority: 5
 tags: [economy, credits, progression]
 parents:
   - [[domain_upsilon_engine]]
-dependents:
-  - [[rule_credit_earning_damage]]
-  - [[rule_credit_earning_status_effects]]
-  - [[rule_credit_earning_support]]
-  - [[rule_starting_credits_1000]]
-  - [[upsilonbattle:entity_player_credits]]
-  - [[upsilonbattle:mec_credit_spending_shop]]
+dependents: []
 ---
 
 # Credit Economy Domain
