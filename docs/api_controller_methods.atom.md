@@ -9,7 +9,9 @@ priority: 5
 tags: [api, controller, messaging]
 parents:
   - [[api_ruler_methods]]
-dependents: []
+dependents:
+  - [[upsilonbattle:mech_controller_communication_sequence]]
+  - [[upsilonbattle:mech_controller_handshake]]
 ---
 # Controller Message Methods API
 

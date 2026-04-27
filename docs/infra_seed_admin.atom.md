@@ -11,7 +11,6 @@ parents:
   - [[upsilonbattle:entity_player]]
 dependents:
   - [[shared:uc_admin_login]]
-  - [[uc_admin_login]]
 ---
 # Administrator Account Seeding Requirement
 

@@ -11,7 +11,8 @@ parents:
   - [[upsilonbattle:entity_player_credits]]
   - [[upsilonbattle:entity_player_inventory]]
   - [[upsilonbattle:mec_credit_spending_shop]]
-dependents: []
+dependents:
+  - [[battleui:ui_shop]]
 ---
 
 # New Atom

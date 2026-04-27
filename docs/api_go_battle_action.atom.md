@@ -12,7 +12,6 @@ parents:
   - [[api_standard_envelope]]
 dependents:
   - [[battleui:battleui_api_dtos]]
-  - [[battleui_api_dtos]]
   - [[api_go_action_feedback]]
 ---
 # UpsilonBattle Arena Action API
