@@ -378,7 +378,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 			ControllerID: playerID,
 			EntityID:     entityID,
 			SkillID:      skillID,
-			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostGroundAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
+			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostCellAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
 		}, rulermethods.ControllerUseSkillReply{}), respChan)
 	case "attack":
 		if len(req.Data.TargetCoords) == 0 {
@@ -387,7 +387,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		r.SendActor(message.Create(nil, rulermethods.ControllerAttack{
 			ControllerID: playerID,
 			EntityID:     entityID,
-			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostGroundAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
+			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostCellAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
 		}, rulermethods.ControllerAttackReply{}), respChan)
 	case "pass":
 		r.SendActor(message.Create(nil, rulermethods.EndOfTurn{
@@ -400,7 +400,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 		}
 		path := make([]position.Position, len(req.Data.TargetCoords))
 		for i, c := range req.Data.TargetCoords {
-			path[i] = position.New(c.X, c.Y, r.GameState.Grid.TopMostGroundAt(c.X, c.Y))
+			path[i] = position.New(c.X, c.Y, r.GameState.Grid.TopMostCellAt(c.X, c.Y))
 		}
 		r.SendActor(message.Create(nil, rulermethods.ControllerMove{
 			ControllerID: playerID,
