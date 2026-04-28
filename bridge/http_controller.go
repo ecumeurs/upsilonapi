@@ -108,6 +108,23 @@ func (hc *HTTPController) mapResults(results []rulermethods.ActionResult) []api.
 }
 
 func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
+	eventName := hc.getEventName(ctx.Msg.TargetMethod)
+	
+	// Extract version from notification if available (v2 versioned notifications)
+	var version int64 = -1
+	switch d := ctx.Msg.TargetMethod.(type) {
+	case rulermethods.ControllerAttacked: version = d.Version
+	case rulermethods.ControllerMoved: version = d.Version
+	case rulermethods.ControllerPassed: version = d.Version
+	case rulermethods.EntitiesStateChanged: version = d.Version
+	case rulermethods.ControllerNextTurn: version = d.Version
+	case rulermethods.BattleStart: version = d.Version
+	case rulermethods.BattleEnd: version = d.Version
+	case rulermethods.ControllerSkillUsed: version = d.Version
+	}
+
+	logrus.Infof("HTTPController %s: forwardToWebhook for %s (version: %d)", hc.MatchID, eventName, version)
+
 	var action *api.ActionFeedback
 	switch d := ctx.Msg.TargetMethod.(type) {
 	case rulermethods.ControllerAttacked:
@@ -157,21 +174,6 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 		}).Debug("Forwarding notification with no specific action feedback")
 	}
 
-	eventName := hc.getEventName(ctx.Msg.TargetMethod)
-
-	// Extract version from notification if available (v2 versioned notifications)
-	var version int64
-	switch d := ctx.Msg.TargetMethod.(type) {
-	case rulermethods.ControllerAttacked: version = d.Version
-	case rulermethods.ControllerMoved: version = d.Version
-	case rulermethods.ControllerPassed: version = d.Version
-	case rulermethods.EntitiesStateChanged: version = d.Version
-	case rulermethods.ControllerNextTurn: version = d.Version
-	case rulermethods.BattleStart: version = d.Version
-	case rulermethods.BattleEnd: version = d.Version
-	case rulermethods.ControllerSkillUsed: version = d.Version
-	}
-
 	// This prevents redundant engine calls when multiple controllers receive the same broadcast.
 	if version >= 0 && !Get().TrySendWebhook(hc.MatchID, version, eventName) {
 		return
@@ -184,7 +186,7 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 
 	// @spec-link [[api_go_battle_action]]
 	// Request safe board state from Ruler
-	logrus.Debugf("Requesting board state for %s (%s)", hc.MatchID, eventName)
+	logrus.Debugf("Requesting board state for %s (%s) (version: %d)", hc.MatchID, eventName, version)
 	hc.Ruler.SendActor(message.Create(hc.Actor, rulermethods.GetBoardState{
 		ActionContext: &webhookContext{
 			Action:    action,
@@ -247,24 +249,24 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 
 	// @spec-link [[mech_arena_lifecycle]]
 	// @spec-link [[mech_webhook_delivery]]
-	// Asynchronous webhook delivery (ISS-099) to prevent blocking the actor loop.
-	go func() {
-		resp, err := http.Post(hc.CallbackURL, "application/json", bytes.NewBuffer(jsonData))
-		if err != nil {
-			logrus.Errorf("Failed to send webhook: %v", err)
-			return
-		}
-		defer resp.Body.Close()
+	// Synchronous delivery: the single HC actor goroutine serialises all webhook
+	// posts, guaranteeing ordered delivery and preventing stale-version races at
+	// Laravel. Only game.ended destruction is spawned async to avoid deadlock.
+	resp, err := http.Post(hc.CallbackURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		logrus.Errorf("Failed to send webhook: %v", err)
+		return
+	}
+	defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			logrus.Warnf("Webhook returned non-OK status: %d", resp.StatusCode)
-		}
+	if resp.StatusCode != http.StatusOK {
+		logrus.Warnf("Webhook returned non-OK status: %d", resp.StatusCode)
+	}
 
-		if payload.EventType == "game.ended" {
-			logrus.Infof("Battle %s ended, triggering arena destruction", hc.MatchID)
-			Get().DestroyArena(hc.MatchID)
-		}
-	}()
+	if payload.EventType == "game.ended" {
+		logrus.Infof("Battle %s ended, triggering arena destruction", hc.MatchID)
+		go Get().DestroyArena(hc.MatchID)
+	}
 }
 
 func (hc *HTTPController) getEventName(content interface{}) string {
