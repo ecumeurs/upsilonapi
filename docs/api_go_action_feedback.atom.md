@@ -40,3 +40,6 @@ The `ActionFeedback` object represents the outcome of exactly ONE tactical actio
 - **Completeness:** If `type` is `attack`, `damage` and HP deltas MUST be present.
 - **Accuracy:** The HP transition `prev_hp` -> `new_hp` MUST reflect the damage calculation exactly.
 - **Consistency:** The `actor_id` MUST correspond to an entity in the `players` roster of the same state update.
+
+## KNOWN ISSUES
+- **Multi-Character Skill Feedback** (Non-Critical): When a skill affects multiple characters (e.g., AoE abilities), the `ActionFeedback` currently reports damage/effects for only ONE target character. Other affected characters' HP changes are reflected in the final `BoardState`, but individual feedback entries don't enumerate all targets. **Impact:** Low. UI will show correct final state, but action-by-action feedback sequence is incomplete. **Status:** Documented but not blocking—clients should prioritize `BoardState` for true game state over individual feedback entries when multi-target effects are involved.
