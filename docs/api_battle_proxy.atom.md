@@ -33,7 +33,8 @@ To facilitate communication between the player and the core game engine for acti
   - **Intent:** Command Transmission
   - **Input:** 
     - `entity_id`: (string) [Mandatory] The acting character identifier.
-    - `type`: (string) [Mandatory] Action type must be **LOWERCASE**: 'move', 'attack', or 'pass'.
+    - `type`: (string) [Mandatory] Action type must be **LOWERCASE**: 'move', 'attack', 'skill', or 'pass'.
+    - `skill_id`: (string) [Mandatory for 'skill'] The skill identifier.
     - `target_coords`: (object) [Optional] Extra data like coordinates or target IDs.
   - **Output:** `{ "success": true, "result": "action_processed" }`
 
