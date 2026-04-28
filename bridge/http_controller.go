@@ -26,6 +26,7 @@ type HTTPController struct {
 	CallbackURL string
 	MatchID     uuid.UUID
 	Players     []api.Player
+	PlayerIDs   []uuid.UUID // all human player IDs this controller represents
 }
 
 type webhookContext struct {
@@ -33,12 +34,15 @@ type webhookContext struct {
 	EventName string
 }
 
-func NewHTTPController(id uuid.UUID, matchID uuid.UUID, callbackURL string, players []api.Player) *HTTPController {
+// NewHTTPController creates a single HTTPController for all human players in a match.
+// It registers under multiple player IDs via AddController, keeping one actor/queue per match.
+func NewHTTPController(matchID uuid.UUID, callbackURL string, players []api.Player, playerIDs []uuid.UUID) *HTTPController {
 	hc := &HTTPController{
-		Controller:  controller.NewController(id),
+		Controller:  controller.NewController(matchID),
 		CallbackURL: callbackURL,
 		MatchID:     matchID,
 		Players:     players,
+		PlayerIDs:   playerIDs,
 	}
 
 	// Override or add methods to handle Ruler's broadcasts
@@ -57,14 +61,16 @@ func NewHTTPController(id uuid.UUID, matchID uuid.UUID, callbackURL string, play
 }
 
 func (hc *HTTPController) BattleStart(ctx actor.NotificationContext) {
-	logrus.Infof("HTTPController %s: BattleStart received, notifying BattleReady", hc.ID)
+	logrus.Infof("HTTPController %s: BattleStart received, notifying BattleReady for %d players", hc.MatchID, len(hc.PlayerIDs))
 	hc.forwardToWebhook(ctx)
 	if hc.Ruler != nil {
-		hc.Ruler.NotifyActor(message.Create(nil, rulermethods.ControllerBattleReady{
-			ControllerID: hc.ID,
-		}, nil))
+		for _, pid := range hc.PlayerIDs {
+			hc.Ruler.NotifyActor(message.Create(nil, rulermethods.ControllerBattleReady{
+				ControllerID: pid,
+			}, nil))
+		}
 	} else {
-		logrus.Warnf("HTTPController %s: Ruler is nil in BattleStart", hc.ID)
+		logrus.Warnf("HTTPController %s: Ruler is nil in BattleStart", hc.MatchID)
 	}
 }
 

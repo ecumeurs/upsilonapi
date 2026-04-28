@@ -155,7 +155,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					Properties:     make(map[string]property.Property),
 				}
 
-				for key, raw := range item.Properties {
+				for key, dto := range item.Properties.Data {
 					// Handle common aliases (e.g. ArmorRating -> Armor)
 					effectiveKey := key
 					if alias, ok := propertyAliasMap[effectiveKey]; ok {
@@ -171,15 +171,9 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					}
 
 					if p != nil {
-						// Handle JSON number decoding (float64 to int)
-						if f, ok := raw.(float64); ok {
-							p.Set(int(f))
-						} else if i, ok := raw.(int); ok {
-							p.Set(i)
-						} else {
-							p.Set(raw)
+						if setSkillPropValue(p, dto) {
+							buff.Properties[property.PropertyToString(effectiveKey)] = p
 						}
-						buff.Properties[property.PropertyToString(effectiveKey)] = p
 					}
 				}
 				e.RegisterBuff(buff)
@@ -198,9 +192,9 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					ID:        skillID,
 					Name:      es.Name,
 					Behavior:  *def.MakeBehaviorProperty(parseBehaviorType(es.Behavior)),
-					Targeting: buildSkillPropertyMap(es.Targeting),
-					Costs:     buildSkillPropertyMap(es.Costs),
-					Effect:    buildSkillEffect(es.Effect),
+					Targeting: buildSkillPropertyMap(es.Targeting.Data),
+					Costs:     buildSkillPropertyMap(es.Costs.Data),
+					Effect:    buildSkillEffect(es.Effect.Data),
 				}
 				e.RegisterSkill(s)
 			}
@@ -212,6 +206,20 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 	// Start the Ruler actor now that initial configuration is complete.
 	battleArena.Ruler.Start()
 
+	// One HTTPController for all human players — single queue, ordered delivery.
+	var humanPlayerIDs []uuid.UUID
+	for _, p := range start.Players {
+		if !p.IA {
+			humanPlayerIDs = append(humanPlayerIDs, uuid.MustParse(p.ID))
+		}
+	}
+	var sharedHC *HTTPController
+	if len(humanPlayerIDs) > 0 {
+		sharedHC = NewHTTPController(matchID, start.CallbackURL, start.Players, humanPlayerIDs)
+		sharedHC.Ruler = battleArena.Ruler
+		sharedHC.Start()
+	}
+
 	for _, p := range start.Players {
 		var ctrl actor.Communication
 		pID := uuid.MustParse(p.ID) // Safe here as we already parsed it above
@@ -220,10 +228,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			iac.Start()
 			ctrl = iac
 		} else {
-			hc := NewHTTPController(pID, matchID, start.CallbackURL, start.Players)
-			hc.Ruler = battleArena.Ruler
-			hc.Start()
-			ctrl = hc
+			ctrl = sharedHC
 		}
 
 		msg := message.Create(ctrl, rulermethods.AddController{
@@ -358,6 +363,23 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 	actionType := strings.ToLower(req.Data.Type)
 
 	switch actionType {
+	case "skill":
+		if req.Data.SkillID == "" {
+			return false, "skill requires skill_id", "request.skill_id.missing", nil
+		}
+		skillID, err := uuid.Parse(req.Data.SkillID)
+		if err != nil {
+			return false, fmt.Sprintf("invalid skill_id: %v", err), "request.skill_id.invalid", nil
+		}
+		if len(req.Data.TargetCoords) == 0 {
+			return false, "skill requires target_coords", "request.target_coords.missing", nil
+		}
+		r.SendActor(message.Create(nil, rulermethods.ControllerUseSkill{
+			ControllerID: playerID,
+			EntityID:     entityID,
+			SkillID:      skillID,
+			Target:       position.New(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y, r.GameState.Grid.TopMostGroundAt(req.Data.TargetCoords[0].X, req.Data.TargetCoords[0].Y)),
+		}, rulermethods.ControllerUseSkillReply{}), respChan)
 	case "attack":
 		if len(req.Data.TargetCoords) == 0 {
 			return false, "attack requires target_coords", "request.target_coords.missing", nil
@@ -487,58 +509,68 @@ func parseBehaviorType(s string) def.BehaviorType {
 	}
 }
 
-// setSkillPropValue applies a JSON-decoded value to a property.Property.
-// Supports plain float64 (int wire) and {"value":X,"max":Y} for counters.
-func setSkillPropValue(prop property.Property, val interface{}) bool {
-	switch v := val.(type) {
-	case float64:
-		prop.Set(int(v))
-		return true
-	case map[string]interface{}:
-		cp, ok := prop.(property.IntCounterProperty)
-		if !ok {
-			return false
+// setSkillPropValue applies a PropertyDTO to a property.Property.
+func setSkillPropValue(prop property.Property, dto api.PropertyDTO) bool {
+	hasValue := false
+	if dto.Value != nil {
+		if cp, ok := prop.(property.IntCounterProperty); ok {
+			cp.SetValue(*dto.Value)
+			hasValue = true
+		} else if ip, ok := prop.(property.IntProperty); ok {
+			ip.SetI(*dto.Value)
+			hasValue = true
 		}
-		if raw, ok := v["value"]; ok {
-			if f, ok := raw.(float64); ok {
-				cp.SetValue(int(f))
-			}
-		}
-		if raw, ok := v["max"]; ok {
-			if f, ok := raw.(float64); ok {
-				cp.SetMaxValue(int(f))
-			}
-		}
-		return true
 	}
-	return false
+	if dto.FValue != nil {
+		if fp, ok := prop.(property.FloatProperty); ok {
+			fp.SetF(*dto.FValue)
+			hasValue = true
+		}
+	}
+	if dto.Max != nil {
+		if cp, ok := prop.(property.IntCounterProperty); ok {
+			cp.SetMaxValue(*dto.Max)
+			hasValue = true
+		}
+	}
+	if dto.BValue != nil {
+		if bp, ok := prop.(property.BoolProperty); ok {
+			bp.SetB(*dto.BValue)
+			hasValue = true
+		}
+	}
+	if dto.SValue != nil {
+		prop.Set(*dto.SValue)
+		hasValue = true
+	}
+	return hasValue
 }
 
 // buildSkillPropertyMap reconstructs a Targeting or Costs property map from
-// the JSON payload. Unknown keys are silently skipped.
-func buildSkillPropertyMap(raw map[string]interface{}) map[string]property.Property {
+// the DTO payload. Unknown keys are silently skipped.
+func buildSkillPropertyMap(raw api.PropertyMap) map[string]property.Property {
 	result := make(map[string]property.Property)
-	for key, val := range raw {
+	for key, dto := range raw {
 		prop := def.SkillProperty(property.SkillProperties(key))
 		if prop == nil {
 			continue
 		}
-		if setSkillPropValue(prop, val) {
+		if setSkillPropValue(prop, dto) {
 			result[key] = prop
 		}
 	}
 	return result
 }
 
-// buildSkillEffect reconstructs an effect.Effect from the JSON payload.
-func buildSkillEffect(raw map[string]interface{}) effect.Effect {
+// buildSkillEffect reconstructs an effect.Effect from the DTO payload.
+func buildSkillEffect(raw api.PropertyMap) effect.Effect {
 	eff := *effect.New()
-	for key, val := range raw {
+	for key, dto := range raw {
 		prop := def.SkillProperty(property.SkillProperties(key))
 		if prop == nil {
 			continue
 		}
-		if setSkillPropValue(prop, val) {
+		if setSkillPropValue(prop, dto) {
 			eff.Properties = append(eff.Properties, prop)
 		}
 	}

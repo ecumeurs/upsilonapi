@@ -28,9 +28,9 @@ func HandleSkillGenerate(c *gin.Context) {
 		ID:             sk.ID.String(),
 		Name:           sk.Name,
 		Behavior:       behaviorStr,
-		Targeting:      targeting,
-		Costs:          costs,
-		Effect:         effectMap,
+		Targeting:      api.Flex[api.PropertyMap]{Data: targeting},
+		Costs:          api.Flex[api.PropertyMap]{Data: costs},
+		Effect:         api.Flex[api.PropertyMap]{Data: effectMap},
 		Grade:          skillweight.GetGrade(positiveSW),
 		WeightPositive: positiveSW,
 		WeightNegative: negativeSW,
@@ -54,28 +54,38 @@ func behaviorName(bt def.BehaviorType) string {
 	}
 }
 
-func serializePropertyMap(props map[string]property.Property) map[string]any {
-	out := make(map[string]any, len(props))
+func serializePropertyMap(props map[string]property.Property) api.PropertyMap {
+	out := make(api.PropertyMap, len(props))
 	for k, v := range props {
 		out[k] = serializeProperty(v)
 	}
 	return out
 }
 
-func serializePropertySlice(props []property.Property) map[string]any {
-	out := make(map[string]any, len(props))
+func serializePropertySlice(props []property.Property) api.PropertyMap {
+	out := make(api.PropertyMap, len(props))
 	for _, v := range props {
 		out[v.Name(property.GameMaster)] = serializeProperty(v)
 	}
 	return out
 }
 
-func serializeProperty(p property.Property) any {
+func serializeProperty(p property.Property) api.PropertyDTO {
+	dto := api.PropertyDTO{}
 	if cp, ok := p.(property.IntCounterProperty); ok {
-		return map[string]int{"value": cp.GetValue(), "max": cp.GetMaxValue()}
+		val := cp.GetValue()
+		max := cp.GetMaxValue()
+		dto.Value = &val
+		dto.Max = &max
+		return dto
 	}
-	if ip, ok := p.(property.IntProperty); ok {
-		return ip.I()
+	val := p.Get()
+	if i, ok := val.(int); ok {
+		dto.Value = &i
+	} else if b, ok := val.(bool); ok {
+		dto.BValue = &b
+	} else if s, ok := val.(string); ok {
+		dto.SValue = &s
 	}
-	return p.Get()
+	return dto
 }

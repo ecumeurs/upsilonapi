@@ -39,9 +39,9 @@ func TestArenaInit_EquippedItemsBecomeBuffs(t *testing.T) {
 								ItemID: itemID.String(),
 								Name:   "Heavy Armor",
 								Slot:   "armor",
-								Properties: map[string]any{
-									"ArmorRating": 5,
-								},
+								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"ArmorRating": api.PropertyDTO{Value: intPtr(5)},
+								}},
 							},
 						},
 					},
@@ -97,9 +97,9 @@ func TestArenaInit_StatMapping(t *testing.T) {
 								ItemID: itemID.String(),
 								Name:   "Swift Boots",
 								Slot:   "utility",
-								Properties: map[string]any{
-									"Movement": 2, // Movement is an EntityProperty
-								},
+								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"Movement": api.PropertyDTO{Value: intPtr(2)}, // Movement is an EntityProperty
+								}},
 							},
 						},
 					},

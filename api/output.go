@@ -10,6 +10,7 @@ import (
 	"github.com/ecumeurs/upsilonmapdata/grid/cell"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/ecumeurs/upsilontypes/property"
+	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/google/uuid"
 )
 
@@ -35,15 +36,15 @@ type ArenaExistsResponse struct {
 // SkillGenerateResponse is the payload returned by POST /v1/skills/generate.
 // @spec-link [[api_skill_generate_engine]]
 type SkillGenerateResponse struct {
-	ID             string         `json:"id"`
-	Name           string         `json:"name"`
-	Behavior       string         `json:"behavior"`
-	Targeting      map[string]any `json:"targeting"`
-	Costs          map[string]any `json:"costs"`
-	Effect         map[string]any `json:"effect"`
-	Grade          string         `json:"grade"`
-	WeightPositive int            `json:"weight_positive"`
-	WeightNegative int            `json:"weight_negative"`
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	Behavior       string            `json:"behavior"`
+	Targeting      Flex[PropertyMap] `json:"targeting"`
+	Costs          Flex[PropertyMap] `json:"costs"`
+	Effect         Flex[PropertyMap] `json:"effect"`
+	Grade          string            `json:"grade"`
+	WeightPositive int               `json:"weight_positive"`
+	WeightNegative int               `json:"weight_negative"`
 }
 
 // @spec-link [[entity_grid]]
@@ -204,31 +205,96 @@ func NewEntity(entity entity.Entity) Entity {
 
 	buffs := make([]Buff, 0, len(entity.Buffs))
 	for _, b := range entity.Buffs {
-		props := make(map[string]any)
+		props := make(PropertyMap)
 		for k, v := range b.Properties {
-			props[k] = v.Get()
+			dto := PropertyDTO{}
+			val := v.Get()
+			if i, ok := val.(int); ok {
+				dto.Value = &i
+			} else if bv, ok := val.(bool); ok {
+				dto.BValue = &bv
+			} else if sv, ok := val.(string); ok {
+				dto.SValue = &sv
+			}
+
+			if cp, ok := v.(property.IntCounterProperty); ok {
+				mv := cp.GetMaxValue()
+				dto.Max = &mv
+			}
+			props[k] = dto
 		}
 		buffs = append(buffs, Buff{
 			OriginID:   b.OriginEntityID.String(),
 			Forever:    b.Forever,
-			Properties: props,
+			Properties: Flex[PropertyMap]{Data: props},
+		})
+	}
+
+	skills := make([]EquippedSkill, 0, len(entity.Skills))
+	for _, s := range entity.Skills {
+		skills = append(skills, EquippedSkill{
+			SkillID:   s.ID.String(),
+			Name:      s.Name,
+			Behavior:  behaviorName(s.Behavior.BehaviorType),
+			Targeting: Flex[PropertyMap]{Data: convertPropertyMap(s.Targeting)},
+			Costs:     Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
+			Effect:    Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
 		})
 	}
 
 	return Entity{
-		ID:       entity.ID.String(),
-		PlayerID: entity.ControllerID.String(),
-		Team:     team,
-		Name:     entity.Name,
-		HP:       hp,
-		MaxHP:    maxHP,
-		Attack:   entity.GetPropertyI(property.Attack).I(),
-		Defense:  entity.GetPropertyI(property.Defense).I(),
-		Move:     move,
-		MaxMove:  maxMove,
-		Position: Position{X: entity.Position.X, Y: entity.Position.Y},
-		Buffs:    buffs,
+		ID:             entity.ID.String(),
+		PlayerID:       entity.ControllerID.String(),
+		Team:           team,
+		Name:           entity.Name,
+		HP:             hp,
+		MaxHP:          maxHP,
+		Attack:         entity.GetPropertyI(property.Attack).I(),
+		Defense:        entity.GetPropertyI(property.Defense).I(),
+		Move:           move,
+		MaxMove:        maxMove,
+		Position:       Position{X: entity.Position.X, Y: entity.Position.Y},
+		Buffs:          buffs,
+		EquippedSkills: skills,
+		IsSelf:         false, // Handled by Laravel gateway
+		Dead:           hp <= 0,
 	}
+}
+
+func convertPropertyMap(props map[string]property.Property) PropertyMap {
+	out := make(PropertyMap, len(props))
+	for k, v := range props {
+		out[k] = convertProperty(v)
+	}
+	return out
+}
+
+func convertPropertySlice(props []property.Property) PropertyMap {
+	out := make(PropertyMap, len(props))
+	for _, v := range props {
+		out[v.Name(property.GameMaster)] = convertProperty(v)
+	}
+	return out
+}
+
+func convertProperty(v property.Property) PropertyDTO {
+	dto := PropertyDTO{}
+	val := v.Get()
+	if i, ok := val.(int); ok {
+		dto.Value = &i
+	} else if f, ok := val.(float64); ok {
+		dto.FValue = &f
+	} else if bv, ok := val.(bool); ok {
+		dto.BValue = &bv
+	} else if sv, ok := val.(string); ok {
+		dto.SValue = &sv
+	}
+
+	if cp, ok := v.(property.IntCounterProperty); ok {
+		mv := cp.GetMaxValue()
+		dto.Max = &mv
+	}
+	return dto
 }
 
 // NewBoardState creates a new BoardState DTO from internal state.
@@ -312,8 +378,11 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 					bs.Players[i].Entities[j] = actual
 				} else {
 					// Entity is dead/removed from engine, ensure HP is 0
-					// Note: the dead flag will be added by the Laravel Gateway resource transformation.
 					bs.Players[i].Entities[j].HP = 0
+					bs.Players[i].Entities[j].Dead = true
+					bs.Players[i].Entities[j].EquippedSkills = make([]EquippedSkill, 0)
+					bs.Players[i].Entities[j].Buffs = make([]Buff, 0)
+					bs.Players[i].Entities[j].EquippedItems = make([]EquippedItem, 0)
 				}
 			}
 		}
@@ -328,4 +397,19 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 	}
 
 	return bs
+}
+
+func behaviorName(bt def.BehaviorType) string {
+	switch bt {
+	case def.BehaviorTypeReaction:
+		return "Reaction"
+	case def.BehaviorTypePassive:
+		return "Passive"
+	case def.BehaviorTypeCounter:
+		return "Counter"
+	case def.BehaviorTypeTrap:
+		return "Trap"
+	default:
+		return "Direct"
+	}
 }

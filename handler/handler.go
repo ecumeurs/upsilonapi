@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -19,6 +20,7 @@ func HandleArenaStart(c *gin.Context) {
 	var req api.ArenaStartMessage
 
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("HandleArenaStart bind error: %v\n", err)
 		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
 		return
 	}

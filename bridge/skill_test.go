@@ -38,18 +38,18 @@ func TestArenaInit_EquippedSkillRegistered(t *testing.T) {
 								SkillID:  skillID.String(),
 								Name:     "Fireball",
 								Behavior: "Direct",
-								Targeting: map[string]interface{}{
-									"Accuracy": float64(80),
-								},
-								Costs: map[string]interface{}{
-									"Delay": map[string]interface{}{
-										"value": float64(0),
-										"max":   float64(3),
+								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"Accuracy": api.PropertyDTO{Value: intPtr(80)},
+								}},
+								Costs: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"Delay": api.PropertyDTO{
+										Value: intPtr(0),
+										Max:   intPtr(3),
 									},
-								},
-								Effect: map[string]interface{}{
-									"Damage": float64(120),
-								},
+								}},
+								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"Damage": api.PropertyDTO{Value: intPtr(120)},
+								}},
 								Origin: "inventory",
 							},
 						},
@@ -105,9 +105,9 @@ func TestArenaInit_ItemSkillAndInventorySkillCoexist(t *testing.T) {
 								ItemID: uuid.New().String(),
 								Name:   "Grenade Launcher",
 								Slot:   "weapon",
-								Properties: map[string]any{
-									"WeaponBaseDamage": float64(3),
-								},
+								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"WeaponBaseDamage": api.PropertyDTO{Value: intPtr(3)},
+								}},
 							},
 						},
 						EquippedSkills: []api.EquippedSkill{
@@ -115,20 +115,20 @@ func TestArenaInit_ItemSkillAndInventorySkillCoexist(t *testing.T) {
 								SkillID:   inventorySkillID.String(),
 								Name:      "Dodge",
 								Behavior:  "Reaction",
-								Targeting: map[string]interface{}{},
-								Costs:     map[string]interface{}{},
-								Effect: map[string]interface{}{
-									"Dodge": float64(50),
-								},
+								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
+								Costs:     api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
+								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
+									"Dodge": api.PropertyDTO{Value: intPtr(50)},
+								}},
 								Origin: "inventory",
 							},
 							{
 								SkillID:   itemSkillID.String(),
 								Name:      "Launch Grenade",
 								Behavior:  "Direct",
-								Targeting: map[string]interface{}{"Accuracy": float64(75)},
-								Costs:     map[string]interface{}{},
-								Effect:    map[string]interface{}{"Damage": float64(200)},
+								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Accuracy": api.PropertyDTO{Value: intPtr(75)}}},
+								Costs:     api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
+								Effect:    api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Damage": api.PropertyDTO{Value: intPtr(200)}}},
 								Origin:    "item:" + uuid.New().String(),
 							},
 						},
@@ -179,7 +179,7 @@ func TestArenaInit_InvalidSkillUUIDSkipped(t *testing.T) {
 								SkillID:  "not-a-uuid",
 								Name:     "Bad Skill",
 								Behavior: "Direct",
-								Effect:   map[string]interface{}{"Damage": float64(50)},
+								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Damage": api.PropertyDTO{Value: intPtr(50)}}},
 							},
 						},
 					},
