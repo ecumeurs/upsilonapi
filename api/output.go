@@ -286,8 +286,18 @@ func convertProperty(v property.Property) PropertyDTO {
 		dto.FValue = &f
 	} else if bv, ok := val.(bool); ok {
 		dto.BValue = &bv
-	} else if sv, ok := val.(string); ok {
-		dto.SValue = &sv
+	} else {
+		// Handle named string types (enums)
+		if sv, ok := val.(string); ok {
+			dto.SValue = &sv
+		} else {
+			// Try to convert to string if it's a named string type
+			s := fmt.Sprintf("%v", val)
+			// But only if it's not a complex struct that happened to have a String() method we don't want
+			// For now, let's just check for the specific types we know or use reflection to check underlying type.
+			// Actually, TargetTypes and TargetingMechanicsType are what we care about.
+			dto.SValue = &s
+		}
 	}
 
 	if cp, ok := v.(property.IntCounterProperty); ok {
