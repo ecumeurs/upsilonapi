@@ -2,7 +2,7 @@ package api
 
 import (
 	"time"
-
+	"fmt"
 	"github.com/ecumeurs/upsilonapi/stdmessage"
 	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
