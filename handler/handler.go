@@ -151,6 +151,36 @@ func HandleGetActiveMatchStats(c *gin.Context) {
 	}))
 }
 
+// HandleArenaResurrect rebuilds a crashed arena from a persisted board state.
+// Called by Laravel when it detects the engine lost in-memory state for an active match.
+// @spec-link [[api_go_battle_engine]]
+func HandleArenaResurrect(c *gin.Context) {
+	idStr := c.Param("id")
+	matchID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", "invalid arena id"))
+		return
+	}
+
+	var req api.ArenaResurrectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
+		return
+	}
+	req.MatchID = matchID.String() // URL param is authoritative
+
+	bs, err := bridge.Get().ResurrectArena(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.NewSuccess("", "Arena resurrected", api.ArenaStartResponse{
+		ArenaID:      matchID.String(),
+		InitialState: bs,
+	}))
+}
+
 // HandleArenaExists checks if an arena exists.
 // @spec-link [[api_arena_existence_check]]
 func HandleArenaExists(c *gin.Context) {

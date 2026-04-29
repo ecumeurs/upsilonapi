@@ -155,6 +155,39 @@ type ArenaForfeitRequest struct {
 	PlayerID string `json:"player_id"`
 }
 
+// ArenaResurrectRequest carries persisted board state from Laravel to rebuild
+// a crashed arena. Players carry entities with current HP/Move/Position/Buffs/Skills.
+// ISS-054: HasMoved/HasActed flags are not preserved (accepted mid-turn state loss).
+type ArenaResurrectRequest struct {
+	MatchID         string             `json:"match_id"`
+	CallbackURL     string             `json:"callback_url"`
+	Players         []Player           `json:"players"`
+	Grid            ResurrectGrid      `json:"grid"`
+	Turns           []ResurrectTurn    `json:"turns"`
+	CurrentEntityID string             `json:"current_entity_id"`
+	Version         int64              `json:"version"`
+}
+
+// ResurrectGrid is the 2D projection of the engine grid sufficient to rebuild pathfinding.
+type ResurrectGrid struct {
+	Width     int                `json:"width"`
+	Height    int                `json:"height"`   // Y dimension (Length)
+	MaxHeight int                `json:"max_height"` // Z ceiling
+	Cells     [][]ResurrectCell  `json:"cells"`
+}
+
+// ResurrectCell carries per-column surface info needed to reconstruct the 3D grid.
+type ResurrectCell struct {
+	Obstacle bool `json:"obstacle"`
+	Height   int  `json:"height"` // topmost Z of the surface at this (x,y)
+}
+
+// ResurrectTurn represents one entry in the saved turner queue.
+type ResurrectTurn struct {
+	EntityID string `json:"entity_id"`
+	Delay    int    `json:"delay"`
+}
+
 type ArenaActionMessage = stdmessage.StandardMessage[ArenaActionRequest, stdmessage.MetaNil]
 type ArenaStartMessage = stdmessage.StandardMessage[ArenaStartRequest, stdmessage.MetaNil]
 type ArenaForfeitMessage = stdmessage.StandardMessage[ArenaForfeitRequest, stdmessage.MetaNil]
