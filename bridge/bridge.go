@@ -189,10 +189,12 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					log.Printf("[ArenaBridge] Skipping skill %s for entity %s: invalid UUID", es.Name, ee.Name)
 					continue
 				}
+				bh := def.DefaultBehavior()
+				bh.SetS(string(parseBehaviorType(es.Behavior)))
 				s := skill.Skill{
 					ID:        skillID,
 					Name:      es.Name,
-					Behavior:  *def.MakeBehaviorProperty(parseBehaviorType(es.Behavior)),
+					Behavior:  bh,
 					Targeting: buildSkillPropertyMap(es.Targeting.Data),
 					Costs:     buildSkillPropertyMap(es.Costs.Data),
 					Effect:    buildSkillEffect(es.Effect.Data),
@@ -599,10 +601,12 @@ func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardSt
 					log.Printf("[ArenaBridge.Resurrect] Skipping skill %s for entity %s: invalid UUID", es.Name, ee.Name)
 					continue
 				}
+				bh := def.DefaultBehavior()
+				bh.SetS(string(parseBehaviorType(es.Behavior)))
 				s := skill.Skill{
 					ID:        skillID,
 					Name:      es.Name,
-					Behavior:  *def.MakeBehaviorProperty(parseBehaviorType(es.Behavior)),
+					Behavior:  bh,
 					Targeting: buildSkillPropertyMap(es.Targeting.Data),
 					Costs:     buildSkillPropertyMap(es.Costs.Data),
 					Effect:    buildSkillEffect(es.Effect.Data),

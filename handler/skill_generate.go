@@ -18,7 +18,7 @@ func HandleSkillGenerate(c *gin.Context) {
 
 	positiveSW, negativeSW, _ := skillweight.Calculate(sk)
 
-	behaviorStr := behaviorName(sk.Behavior.BehaviorType)
+	behaviorStr := behaviorName(def.BehaviorType(sk.Behavior.Get().(string)))
 
 	targeting := serializePropertyMap(sk.Targeting)
 	costs := serializePropertyMap(sk.Costs)
@@ -40,18 +40,7 @@ func HandleSkillGenerate(c *gin.Context) {
 }
 
 func behaviorName(bt def.BehaviorType) string {
-	switch bt {
-	case def.BehaviorTypeReaction:
-		return "Reaction"
-	case def.BehaviorTypePassive:
-		return "Passive"
-	case def.BehaviorTypeCounter:
-		return "Counter"
-	case def.BehaviorTypeTrap:
-		return "Trap"
-	default:
-		return "Direct"
-	}
+	return string(bt)
 }
 
 func serializePropertyMap(props map[string]property.Property) api.PropertyMap {

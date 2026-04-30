@@ -235,7 +235,7 @@ func NewEntity(entity entity.Entity) Entity {
 		skills = append(skills, EquippedSkill{
 			SkillID:   s.ID.String(),
 			Name:      s.Name,
-			Behavior:  behaviorName(s.Behavior.BehaviorType),
+			Behavior:  behaviorName(def.BehaviorType(s.Behavior.Get().(string))),
 			Targeting: Flex[PropertyMap]{Data: convertPropertyMap(s.Targeting)},
 			Costs:     Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
 			Effect:    Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
@@ -410,16 +410,5 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 }
 
 func behaviorName(bt def.BehaviorType) string {
-	switch bt {
-	case def.BehaviorTypeReaction:
-		return "Reaction"
-	case def.BehaviorTypePassive:
-		return "Passive"
-	case def.BehaviorTypeCounter:
-		return "Counter"
-	case def.BehaviorTypeTrap:
-		return "Trap"
-	default:
-		return "Direct"
-	}
+	return string(bt)
 }
