@@ -49,7 +49,7 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 	// Try unmarshaling as a struct first (structured properties)
 	type alias PropertyDTO
 	var a alias
-	if err := json.Unmarshal(data, &a); err == nil && (a.Value != nil || a.Max != nil || a.BValue != nil || a.SValue != nil) {
+	if err := json.Unmarshal(data, &a); err == nil && (a.Value != nil || a.Max != nil || a.BValue != nil || a.SValue != nil || a.FValue != nil) {
 		*p = PropertyDTO(a)
 		return nil
 	}
@@ -58,6 +58,11 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 	var i int
 	if err := json.Unmarshal(data, &i); err == nil {
 		p.Value = &i
+		return nil
+	}
+	var f float64
+	if err := json.Unmarshal(data, &f); err == nil {
+		p.FValue = &f
 		return nil
 	}
 	var b bool
