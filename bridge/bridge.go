@@ -156,6 +156,17 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					Properties:     make(map[string]property.Property),
 				}
 
+				// Item Effect & Zone special handling
+				if len(item.Effect.Data) > 0 {
+					eff := buildSkillEffect(item.Effect.Data)
+					buff.Properties[property.PropertyToString(property.Effect)] = def.MakeEffectProperty(&eff, property.Analyser)
+				}
+				if item.Zone != nil {
+					zp := def.DefaultZone()
+					zp.Set(*item.Zone)
+					buff.Properties[property.PropertyToString(property.Zone)] = zp
+				}
+
 				for key, dto := range item.Properties.Data {
 					// Handle common aliases (e.g. ArmorRating -> Armor)
 					effectiveKey := key
@@ -199,6 +210,13 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 					Costs:     buildSkillPropertyMap(es.Costs.Data),
 					Effect:    buildSkillEffect(es.Effect.Data),
 				}
+				// Zone special handling
+				if es.Zone != nil {
+					zp := def.DefaultZone()
+					zp.Set(*es.Zone)
+					s.Targeting[property.PropertyToString(property.Zone)] = zp
+				}
+
 				e.RegisterSkill(s)
 			}
 

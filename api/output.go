@@ -203,35 +203,49 @@ func NewEntity(entity entity.Entity) Entity {
 		}
 	}
 
+	equippedItems := make([]EquippedItem, 0)
 	buffs := make([]Buff, 0, len(entity.Buffs))
 	for _, b := range entity.Buffs {
-		props := make(PropertyMap)
-		for k, v := range b.Properties {
-			dto := PropertyDTO{}
-			val := v.Get()
-			if i, ok := val.(int); ok {
-				dto.Value = &i
-			} else if bv, ok := val.(bool); ok {
-				dto.BValue = &bv
-			} else if sv, ok := val.(string); ok {
-				dto.SValue = &sv
-			}
+		if b.OriginEntityID != uuid.Nil {
+			// Actually, let's check for Effect or Zone property to identify items/complex buffs
+			_, hasEffect := b.Properties[property.PropertyToString(property.Effect)]
+			_, hasZone := b.Properties[property.PropertyToString(property.Zone)]
 
-			if cp, ok := v.(property.IntCounterProperty); ok {
-				mv := cp.GetMaxValue()
-				dto.Max = &mv
+			if hasEffect || hasZone {
+				var zone *string
+				if zp, ok := b.Properties[property.PropertyToString(property.Zone)].(*def.ZoneProperty); ok {
+					zone = &zp.PatternType
+				}
+				var effProps PropertyMap
+				if ep, ok := b.Properties[property.PropertyToString(property.Effect)].(*def.EffectProperty); ok && ep.Effect != nil {
+					effProps = convertPropertySlice(ep.Effect.Properties)
+				}
+
+				equippedItems = append(equippedItems, EquippedItem{
+					ItemID:     b.OriginEntityID.String(),
+					Name:       "Equipped Item", // Placeholder as engine doesn't store name
+					Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
+					Effect:     Flex[PropertyMap]{Data: effProps},
+					Zone:       zone,
+				})
+				continue // Don't show as a separate buff if it's shown as an item
 			}
-			props[k] = dto
 		}
+
 		buffs = append(buffs, Buff{
 			OriginID:   b.OriginEntityID.String(),
 			Forever:    b.Forever,
-			Properties: Flex[PropertyMap]{Data: props},
+			Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
 		})
 	}
 
 	skills := make([]EquippedSkill, 0, len(entity.Skills))
 	for _, s := range entity.Skills {
+		var zone *string
+		if zp, ok := s.Targeting[property.PropertyToString(property.Zone)].(*def.ZoneProperty); ok {
+			zone = &zp.PatternType
+		}
+
 		skills = append(skills, EquippedSkill{
 			SkillID:   s.ID.String(),
 			Name:      s.Name,
@@ -239,6 +253,7 @@ func NewEntity(entity entity.Entity) Entity {
 			Targeting: Flex[PropertyMap]{Data: convertPropertyMap(s.Targeting)},
 			Costs:     Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
 			Effect:    Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
+			Zone:      zone,
 		})
 	}
 
@@ -255,6 +270,7 @@ func NewEntity(entity entity.Entity) Entity {
 		MaxMove:        maxMove,
 		Position:       Position{X: entity.Position.X, Y: entity.Position.Y},
 		Buffs:          buffs,
+		EquippedItems:  equippedItems,
 		EquippedSkills: skills,
 		IsSelf:         false, // Handled by Laravel gateway
 		Dead:           hp <= 0,
@@ -264,6 +280,10 @@ func NewEntity(entity entity.Entity) Entity {
 func convertPropertyMap(props map[string]property.Property) PropertyMap {
 	out := make(PropertyMap, len(props))
 	for k, v := range props {
+		// Skip special fields that are handled at the top level of the DTO
+		if k == property.PropertyToString(property.Effect) || k == property.PropertyToString(property.Zone) {
+			continue
+		}
 		out[k] = convertProperty(v)
 	}
 	return out

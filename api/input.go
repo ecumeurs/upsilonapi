@@ -125,6 +125,7 @@ type EquippedSkill struct {
 	Targeting Flex[PropertyMap]   `json:"targeting"`
 	Costs     Flex[PropertyMap]   `json:"costs"`
 	Effect    Flex[PropertyMap]   `json:"effect"`
+	Zone      *string             `json:"zone,omitempty"`
 	Origin    string              `json:"origin,omitempty"` // "inventory" | "item:<item_id>"
 }
 
@@ -139,6 +140,8 @@ type EquippedItem struct {
 	Name       string            `json:"name"`
 	Slot       string            `json:"slot"`
 	Properties Flex[PropertyMap] `json:"properties"`
+	Effect     Flex[PropertyMap] `json:"effect,omitempty"`
+	Zone       *string           `json:"zone,omitempty"`
 }
 
 // @spec-link [[entity_player]]
