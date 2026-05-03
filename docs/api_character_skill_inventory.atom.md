@@ -8,8 +8,8 @@ human_name: Character Skill Inventory API
 layer: ARCHITECTURE
 tags: [api, skills, inventory, iss-073]
 parents:
-  - [[entity_character_skill_inventory]]
-  - [[rule_character_skill_slots]]
+  - [[upsilontypes:entity_character_skill_inventory]]
+  - [[upsilontypes:rule_character_skill_slots]]
 dependents: []
 ---
 

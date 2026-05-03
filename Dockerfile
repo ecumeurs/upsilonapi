@@ -16,6 +16,7 @@ COPY upsilonmapdata/go.mod upsilonmapdata/go.su[m] ./upsilonmapdata/
 COPY upsilonmapmaker/go.mod upsilonmapmaker/go.su[m] ./upsilonmapmaker/
 COPY upsilonserializer/go.mod upsilonserializer/go.su[m] ./upsilonserializer/
 COPY upsilontools/go.mod upsilontools/go.su[m] ./upsilontools/
+COPY upsilontypes/go.mod upsilontypes/go.su[m] ./upsilontypes/
 
 # Download dependencies
 RUN go mod download

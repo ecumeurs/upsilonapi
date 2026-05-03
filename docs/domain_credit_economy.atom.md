@@ -16,6 +16,7 @@ dependents:
   - [[shared:rule_starting_credits_1000]]
   - [[upsilonbattle:entity_player_credits]]
   - [[upsilonbattle:mec_credit_spending_shop]]
+  - [[upsilontypes:entity_shop_item]]
 ---
 
 # Credit Economy Domain

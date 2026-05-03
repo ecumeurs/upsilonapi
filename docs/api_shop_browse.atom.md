@@ -8,7 +8,7 @@ human_name: Shop Catalog Browse API
 type: API
 tags: [api, shop, catalog, iss-074]
 parents:
-  - [[entity_shop_item]]
+  - [[upsilontypes:entity_shop_item]]
   - [[upsilonbattle:mec_credit_spending_shop]]
 dependents:
   - [[battleui:ui_shop]]

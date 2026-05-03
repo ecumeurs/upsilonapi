@@ -5,7 +5,7 @@ layer: ARCHITECTURE
 priority: 5
 version: 2.0
 parents:
-  - [[entity_skill_template]]
+  - [[upsilontypes:entity_skill_template]]
   - [[rule_admin_content_authority]]
 dependents: []
 tags: [api, skills, admin, crud, iss-086]

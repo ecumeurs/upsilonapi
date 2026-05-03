@@ -7,7 +7,7 @@ layer: ARCHITECTURE
 priority: 5
 tags: [api, skills, templates, catalog, iss-086]
 parents:
-  - [[entity_skill_template]]
+  - [[upsilontypes:entity_skill_template]]
 type: API
 version: 2.0
 ---
