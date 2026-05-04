@@ -14,9 +14,17 @@ import (
 // HandleSkillGenerate generates a random balanced skill and returns its full JSON representation.
 // @spec-link [[api_skill_generate_engine]]
 func HandleSkillGenerate(c *gin.Context) {
-	sk := skillgenerator.GenerateRandomSkill()
+	var req skillgenerator.GenerateRequest
+	// BindJSON is optional; if body is empty, req remains at default (Grade I, all tags).
+	_ = c.ShouldBindJSON(&req)
 
-	positiveSW, negativeSW, _ := skillweight.Calculate(sk)
+	sk, tags, err := skillgenerator.Generate(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
+		return
+	}
+
+	positiveSW, negativeSW, _ := skillweight.Calculate(&sk)
 
 	behaviorStr := behaviorName(def.BehaviorType(sk.Behavior.Get().(string)))
 
@@ -32,6 +40,7 @@ func HandleSkillGenerate(c *gin.Context) {
 		Costs:          api.Flex[api.PropertyMap]{Data: costs},
 		Effect:         api.Flex[api.PropertyMap]{Data: effectMap},
 		Grade:          skillweight.GetGrade(positiveSW),
+		Tags:           tags,
 		WeightPositive: positiveSW,
 		WeightNegative: negativeSW,
 	}

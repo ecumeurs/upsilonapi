@@ -43,6 +43,7 @@ type SkillGenerateResponse struct {
 	Costs          Flex[PropertyMap] `json:"costs"`
 	Effect         Flex[PropertyMap] `json:"effect"`
 	Grade          string            `json:"grade"`
+	Tags           []string          `json:"tags"`
 	WeightPositive int               `json:"weight_positive"`
 	WeightNegative int               `json:"weight_negative"`
 }
