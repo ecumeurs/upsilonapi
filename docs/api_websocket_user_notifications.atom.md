@@ -3,14 +3,19 @@ id: api_websocket_user_notifications
 human_name: "WebSocket User Notifications (Private)"
 type: API
 layer: ARCHITECTURE
-version: 1.0
+version: 1.1
 status: STABLE
 priority: 3
 tags: [websocket, matchmaking, notifications]
 parents:
   - [[api_matchmaking]]
   - [[api_websocket_game_events]]
-dependents: []
+dependents:
+  - [[battleui:ui_dashboard_matchmaking]]
+has_tests: true
+linked_codes:
+  - battleui/resources/js/Components/Dashboard/EngagementHub.vue:88
+  - battleui/tests/playwright/user_flows.spec.ts
 ---
 
 # WebSocket User Notifications (Private)

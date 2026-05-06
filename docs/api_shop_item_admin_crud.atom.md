@@ -2,8 +2,8 @@
 id: api_shop_item_admin_crud
 status: STABLE
 parents:
-  - [[upsilontypes:entity_shop_item]]
   - [[rule_admin_content_authority]]
+  - [[upsilontypes:entity_shop_item]]
 dependents: []
 type: API
 layer: ARCHITECTURE

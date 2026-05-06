@@ -5,8 +5,8 @@ layer: ARCHITECTURE
 priority: 5
 version: 2.0
 parents:
-  - [[upsilontypes:entity_skill_template]]
   - [[rule_admin_content_authority]]
+  - [[upsilontypes:entity_skill_template]]
 dependents: []
 tags: [api, skills, admin, crud, iss-086]
 human_name: Admin Skill Template CRUD API

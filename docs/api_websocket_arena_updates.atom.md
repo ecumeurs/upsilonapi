@@ -3,7 +3,7 @@ id: api_websocket_arena_updates
 human_name: "WebSocket Arena Updates (Customized)"
 type: API
 layer: ARCHITECTURE
-version: 1.0
+version: 1.1
 status: STABLE
 priority: 2
 tags: [websocket, battle, tactical, updates]
@@ -11,6 +11,11 @@ parents:
   - [[api_battle_proxy]]
   - [[api_websocket_game_events]]
 dependents: []
+has_tests: true
+linked_codes:
+  - battleui/resources/js/Pages/BattleArena.vue:42
+  - battleui/resources/js/services/game.js:50
+  - battleui/tests/playwright/battle_arena.spec.ts
 ---
 
 # WebSocket Arena Updates (Private)
