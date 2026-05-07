@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// @test-link [[mec_skill_payload_resolution]]
+// @test-link [[mechanic_mec_skill_payload_resolution]]
 // @test-link [[api_character_skill_inventory]]
 
 func TestArenaInit_EquippedSkillRegistered(t *testing.T) {

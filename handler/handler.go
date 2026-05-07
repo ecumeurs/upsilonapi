@@ -16,6 +16,7 @@ import (
 // @spec-link [[api_go_battle_engine]]
 
 // HandleArenaStart handles the start of a new arena; initializes a new ruler and returns the initial state.
+// @spec-link [[api_go_battle_start]]
 func HandleArenaStart(c *gin.Context) {
 	var req api.ArenaStartMessage
 
@@ -40,6 +41,7 @@ func HandleArenaStart(c *gin.Context) {
 }
 
 // HandleArenaAction handles an action in an arena; sends the action to the ruler.
+// @spec-link [[api_go_battle_action]]
 func HandleArenaAction(c *gin.Context) {
 	// extract StandardMessage first .
 
@@ -121,6 +123,7 @@ func HandleArenaForfeit(c *gin.Context) {
 		return
 	}
 
+	// Validate the arena ID from the URL parameter.
 	idStr := c.Param("id")
 	arenaID, err := uuid.Parse(idStr)
 	if err != nil {
@@ -128,22 +131,27 @@ func HandleArenaForfeit(c *gin.Context) {
 		return
 	}
 
+	// Validate the player ID from the request body.
 	playerID, err := uuid.Parse(req.Data.PlayerID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, api.NewError(req.RequestID, "invalid player id"))
 		return
 	}
 
+	// Proxy the forfeit request to the bridge. 
+	// Forfeiting is a team-wide action that doesn't require a specific entity context.
 	ok, msg, errKey, _ := bridge.Get().ArenaForfeit(arenaID, playerID)
 	if !ok {
 		c.JSON(http.StatusPreconditionFailed, api.NewErrorWithKey(req.RequestID, msg, errKey))
 		return
 	}
 
+	// Return success response to Laravel.
 	c.JSON(http.StatusOK, api.NewSuccess(req.RequestID, "Forfeit accepted", stdmessage.DataNil{}))
 }
 
 // HandleGetActiveMatchStats returns the number of active matches.
+// @spec-link [[api_go_health_check]]
 func HandleGetActiveMatchStats(c *gin.Context) {
 	count := bridge.Get().GetActiveMatchCount()
 	c.JSON(http.StatusOK, api.NewSuccess("", "Active match stats retrieved", api.ActiveMatchStatsResponse{
@@ -198,6 +206,7 @@ func HandleArenaExists(c *gin.Context) {
 	}))
 }
 
+// mapCreditsToApi converts engine credit awards into API credit awards.
 func mapCreditsToApi(awards []rulermethods.CreditAward) []api.CreditAward {
 	if len(awards) == 0 {
 		return nil

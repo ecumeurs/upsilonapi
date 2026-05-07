@@ -60,6 +60,8 @@ func NewHTTPController(matchID uuid.UUID, callbackURL string, players []api.Play
 	return hc
 }
 
+// BattleStart handles the BattleStart notification from the Ruler.
+// It notifies human players that the battle is ready.
 func (hc *HTTPController) BattleStart(ctx actor.NotificationContext) {
 	logrus.Infof("HTTPController %s: BattleStart received, notifying BattleReady for %d players", hc.MatchID, len(hc.PlayerIDs))
 	hc.forwardToWebhook(ctx)
@@ -74,6 +76,7 @@ func (hc *HTTPController) BattleStart(ctx actor.NotificationContext) {
 	}
 }
 
+// mapCredits converts engine credit awards into API credit awards.
 func (hc *HTTPController) mapCredits(awards []rulermethods.CreditAward) []api.CreditAward {
 	if len(awards) == 0 {
 		return nil
@@ -89,6 +92,7 @@ func (hc *HTTPController) mapCredits(awards []rulermethods.CreditAward) []api.Cr
 	return res
 }
 
+// mapResults converts engine action results into API action results.
 func (hc *HTTPController) mapResults(results []rulermethods.ActionResult) []api.ActionResult {
 	if len(results) == 0 {
 		return nil
@@ -107,6 +111,8 @@ func (hc *HTTPController) mapResults(results []rulermethods.ActionResult) []api.
 	return res
 }
 
+// forwardToWebhook intercepts Ruler notifications and triggers a board state fetch
+// before sending the combined tactical result to the Laravel callback URL.
 func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 	eventName := hc.getEventName(ctx.Msg.TargetMethod)
 	
@@ -196,6 +202,7 @@ func (hc *HTTPController) forwardToWebhook(ctx actor.NotificationContext) {
 }
 
 
+// handleBoardStateReply receives the board state from the Ruler and completes the webhook delivery.
 func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 	reply, ok := ctx.Msg.Content.(rulermethods.GetBoardStateReply)
 	if !ok {
@@ -247,7 +254,7 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 		return
 	}
 
-	// @spec-link [[mech_arena_lifecycle]]
+	// @spec-link [[mechanic_mech_arena_lifecycle]]
 	// @spec-link [[mech_webhook_delivery]]
 	// Synchronous delivery: the single HC actor goroutine serialises all webhook
 	// posts, guaranteeing ordered delivery and preventing stale-version races at
@@ -269,6 +276,7 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 	}
 }
 
+// getEventName maps an engine method type to its corresponding API event name.
 func (hc *HTTPController) getEventName(content interface{}) string {
 	switch content.(type) {
 	case rulermethods.ControllerNextTurn:

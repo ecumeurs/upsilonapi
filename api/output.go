@@ -34,7 +34,7 @@ type ArenaExistsResponse struct {
 }
 
 // SkillGenerateResponse is the payload returned by POST /v1/skills/generate.
-// @spec-link [[api_skill_generate_engine]]
+// @spec-link [[api_skill_generation]]
 type SkillGenerateResponse struct {
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
@@ -133,6 +133,7 @@ type ArenaStartResponseMessage = stdmessage.StandardMessage[ArenaStartResponse, 
 type ArenaEventMessage = stdmessage.StandardMessage[ArenaEvent, stdmessage.MetaNil]
 
 // NewError creates a new StandardMessage with the given error.
+// It follows the standard envelope format defined in [[api_standard_envelope]].
 func NewError(requestId string, err string) stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil] {
 	return stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil]{
 		RequestID: requestId,
@@ -163,6 +164,7 @@ func NewErrorWithKey(requestId string, err string, errorKey string) stdmessage.S
 }
 
 // NewSuccess creates a new StandardMessage with the given data.
+// It follows the standard envelope format defined in [[api_standard_envelope]].
 func NewSuccess[T any](requestId string, msg string, data T) stdmessage.StandardMessage[T, stdmessage.MetaNil] {
 	return stdmessage.StandardMessage[T, stdmessage.MetaNil]{
 		RequestID: requestId,
@@ -173,7 +175,8 @@ func NewSuccess[T any](requestId string, msg string, data T) stdmessage.Standard
 	}
 }
 
-// NewEntity creates a new Entity from the given entity (upsilonbattle's)
+// NewEntity creates a new Entity DTO from the given engine entity.
+// It resolves HP, movement, equipment, and skills into a serializable format.
 func NewEntity(entity entity.Entity) Entity {
 	team := 0
 	if prop := entity.GetPropertyI(property.TeamID); prop != nil {
@@ -278,6 +281,7 @@ func NewEntity(entity entity.Entity) Entity {
 	}
 }
 
+// convertPropertyMap transforms a map of engine properties into a serializable PropertyMap.
 func convertPropertyMap(props map[string]property.Property) PropertyMap {
 	out := make(PropertyMap, len(props))
 	for k, v := range props {
@@ -290,6 +294,7 @@ func convertPropertyMap(props map[string]property.Property) PropertyMap {
 	return out
 }
 
+// convertPropertySlice transforms a slice of engine properties into a serializable PropertyMap.
 func convertPropertySlice(props []property.Property) PropertyMap {
 	out := make(PropertyMap, len(props))
 	for _, v := range props {
@@ -298,6 +303,8 @@ func convertPropertySlice(props []property.Property) PropertyMap {
 	return out
 }
 
+// convertProperty transforms a single engine property into a PropertyDTO,
+// handling polymorphism for int, float, bool, and string values.
 func convertProperty(v property.Property) PropertyDTO {
 	dto := PropertyDTO{}
 	val := v.Get()
@@ -328,7 +335,9 @@ func convertProperty(v property.Property) PropertyDTO {
 	return dto
 }
 
-// NewBoardState creates a new BoardState DTO from internal state.
+// NewBoardState creates a new BoardState DTO from internal engine state.
+// It orchestrates the mapping of players, entities, grid, and turn order.
+// @spec-link [[api_battle_proxy]]
 func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, players []Player, ts turner.TurnState, startTime time.Time, timeout time.Time, winnerTeamID int, version int64, action *ActionFeedback) BoardState {
 	bs := BoardState{
 		StartTime:       startTime,
@@ -430,6 +439,7 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 	return bs
 }
 
+// behaviorName returns the string representation of a BehaviorType.
 func behaviorName(bt def.BehaviorType) string {
 	return string(bt)
 }

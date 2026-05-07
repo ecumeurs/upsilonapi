@@ -52,10 +52,13 @@ var bridge = &ArenaBridge{
 	lastSentWebhookVersion: make(map[uuid.UUID]int64),
 }
 
+// Get returns the singleton ArenaBridge instance.
 func Get() *ArenaBridge {
 	return bridge
 }
 
+// StartArena initializes a new battle arena from a start request.
+// It generates the grid, configures entities, and starts the ruler actor.
 func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.Grid, []entity.Entity, []api.Player, turner.TurnState, int64, error) {
 	if start.MatchID == "" {
 		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("mandatory field match_id is missing")
@@ -192,7 +195,7 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 			}
 
 			// Load equipped skills from payload
-			// @spec-link [[mec_skill_payload_resolution]]
+			// @spec-link [[mechanic_mec_skill_payload_resolution]]
 			// @spec-link [[api_character_skill_inventory]]
 			for _, es := range ee.EquippedSkills {
 				skillID, err := uuid.Parse(es.SkillID)
@@ -360,6 +363,7 @@ func (b *ArenaBridge) TrySendWebhook(matchID uuid.UUID, version int64, eventType
 // (ok, message, errorKey, data). errorKey is populated only on failure and
 // mirrors the engine's ReplyWithError key; it lands on the external envelope
 // as `meta.error_key` via [[api_standard_envelope]].
+// @spec-link [[api_go_battle_action]]
 func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage) (bool, string, string, interface{}) {
 	r, ok := b.GetArena(arenaID)
 	if !ok {
@@ -476,6 +480,7 @@ func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool,
 	return true, "forfeit accepted", "", res.Content
 }
 
+// GetArena retrieves the Ruler for the given arena ID.
 func (b *ArenaBridge) GetArena(id uuid.UUID) (*ruler.Ruler, bool) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -487,7 +492,7 @@ func (b *ArenaBridge) GetArena(id uuid.UUID) (*ruler.Ruler, bool) {
 }
 
 // DestroyArena stops the Ruler and all controllers, then removes the arena from memory.
-// @spec-link [[mech_arena_lifecycle]]
+// @spec-link [[mechanic_mech_arena_lifecycle]]
 func (b *ArenaBridge) DestroyArena(matchID uuid.UUID) {
 	b.mu.Lock()
 	arena, ok := b.arenas[matchID]
@@ -732,6 +737,7 @@ func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardSt
 
 // resurrectGrid reconstructs a 3D engine grid from the 2D serialized projection.
 // Each (x,y) column gets dirt cells below and a ground (or obstacle) cell at the saved surface Z.
+// @spec-link [[api_battle_proxy]]
 func resurrectGrid(rg api.ResurrectGrid) *grid.Grid {
 	g := &grid.Grid{
 		Width:  rg.Width,
@@ -774,7 +780,7 @@ func (b *ArenaBridge) GetActiveMatchCount() int {
 // ── Skill payload helpers ─────────────────────────────────────────────────
 
 // parseBehaviorType converts the wire string to a def.BehaviorType.
-// @spec-link [[mec_skill_payload_resolution]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 func parseBehaviorType(s string) def.BehaviorType {
 	switch s {
 	case "Reaction":

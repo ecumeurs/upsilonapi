@@ -9,14 +9,18 @@ import (
 // @spec-link [[rule_dto_strict_typing]]
 // Flex handles inconsistent JSON from external systems (e.g. Laravel)
 // where an empty object might be represented as an empty array [].
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 type Flex[T any] struct {
 	Data T
 }
 
+// MarshalJSON satisfies the json.Marshaler interface.
 func (f Flex[T]) MarshalJSON() ([]byte, error) {
 	return json.Marshal(f.Data)
 }
 
+// UnmarshalJSON satisfies the json.Unmarshaler interface.
+// It explicitly handles the "[]" case to avoid unmarshaling errors for empty objects.
 func (f *Flex[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "[]" {
 		// Return zero value for T
@@ -28,6 +32,7 @@ func (f *Flex[T]) UnmarshalJSON(data []byte) error {
 // PropertyDTO represents a single property value in a strictly typed manner.
 // It supports integers (with optional max for counters), booleans, and strings.
 // @spec-link [[rule_dto_strict_typing]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 type PropertyDTO struct {
 	Value  *int     `json:"value,omitempty"`
 	FValue *float64 `json:"fvalue,omitempty"`
@@ -36,6 +41,7 @@ type PropertyDTO struct {
 	SValue *string  `json:"svalue,omitempty"`
 }
 
+// MarshalJSON satisfies the json.Marshaler interface.
 func (p PropertyDTO) MarshalJSON() ([]byte, error) {
 	// If it's a simple value, we might want to flatten it? 
 	// No, the user said "mostly int, and some time counter int. So we may have to have a generic property DTO for this will nullable max."
@@ -45,6 +51,8 @@ func (p PropertyDTO) MarshalJSON() ([]byte, error) {
 	return json.Marshal(alias(p))
 }
 
+// UnmarshalJSON satisfies the json.Unmarshaler interface.
+// It implements polymorphic unmarshaling to handle both structured DTOs and primitives.
 func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 	// Try unmarshaling as a struct first (structured properties)
 	type alias PropertyDTO
@@ -117,7 +125,7 @@ type Entity struct {
 }
 
 // @spec-link [[api_character_skill_inventory]]
-// @spec-link [[mec_skill_payload_resolution]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 type EquippedSkill struct {
 	SkillID   string              `json:"skill_id"`
 	Name      string              `json:"name"`
