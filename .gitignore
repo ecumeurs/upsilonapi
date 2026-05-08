@@ -1,1 +1,3 @@
-upsilonapi
+upsilonapi*.db
+*.sqlite
+*.sqlite3
