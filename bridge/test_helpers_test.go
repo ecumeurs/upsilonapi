@@ -27,6 +27,12 @@ func stringPtr(v string) *string {
 	return &v
 }
 
+// intPtr is a utility to create a pointer to an integer value.
+func intPtr(v int) *int {
+	// 1. Memory Management: Allocate integer on heap and return reference.
+	return &v
+}
+
 // createTestRequest builds a baseline ArenaStartRequest for integration testing.
 func createTestRequest(matchID uuid.UUID) api.ArenaStartRequest {
 	// 1. Payload Assembly: Return a standard match request with identified players and entities.

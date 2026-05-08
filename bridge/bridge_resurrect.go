@@ -19,6 +19,7 @@ import (
 	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/ecumeurs/upsilontools/tools/actor"
 	"github.com/ecumeurs/upsilontools/tools/messagequeue/message"
+	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
 	"github.com/google/uuid"

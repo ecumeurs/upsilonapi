@@ -10,7 +10,6 @@ import (
 
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
 	"github.com/ecumeurs/upsilonmapdata/grid"
-	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,7 +17,7 @@ import (
 // TestNewBoardStateWinnerTeamID verifies that victory conditions are correctly reflected in the board state.
 func TestNewBoardStateWinnerTeamID(t *testing.T) {
 	// 1. Setup Phase: Initialize a basic grid and a dummy turn state.
-	g := grid.New(5, 5, 5)
+	g := grid.NewGrid(5, 5, 5)
 	ts := turner.TurnState{}
 	
 	// 2. Execution Phase: Create a board state where team 2 is the winner.
@@ -32,7 +31,7 @@ func TestNewBoardStateWinnerTeamID(t *testing.T) {
 // TestNewBoardStateCarriesElevation ensures that the 2D grid projection preserves height data.
 func TestNewBoardStateCarriesElevation(t *testing.T) {
 	// 1. Setup Phase: Create a grid with a variable elevation profile.
-	g := grid.New(10, 10, 10)
+	g := grid.NewGrid(10, 10, 10)
 	
 	// 2. Execution Phase: Create a board state from the 3D grid.
 	bs := NewBoardState(uuid.New(), g, nil, nil, turner.TurnState{}, time.Now(), time.Now().Add(30*time.Second), 0, 1, nil)
@@ -52,7 +51,7 @@ func TestNewBoardStateDeadEntityHP(t *testing.T) {
 	}
 	
 	// 2. Execution Phase: Create a board state with an empty entity list to simulate entity removal/death.
-	bs := NewBoardState(uuid.New(), grid.New(5, 5, 5), nil, []Player{p}, turner.TurnState{}, time.Now(), time.Now().Add(30*time.Second), 0, 1, nil)
+	bs := NewBoardState(uuid.New(), grid.NewGrid(5, 5, 5), nil, []Player{p}, turner.TurnState{}, time.Now(), time.Now().Add(30*time.Second), 0, 1, nil)
 	
 	// 3. Validation Phase: Ensure the entity in the player roster is marked as dead with 0 HP.
 	assert.True(t, bs.Players[0].Entities[0].Dead, "entity must be marked as dead if missing from live engine state")

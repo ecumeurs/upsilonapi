@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonapi/handler"
-	"github.com/ecumeurs/upsilonapi/stdmessage"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -80,7 +78,12 @@ func TestBattleFullRoundtrip(t *testing.T) {
 	bs := executeStart(t, router, matchID, ts.URL)
 
 	// 3. Tactical Loop: Wait for the first turn and verify entity placement.
-	waitForWebhook(t, webhookEvents, "turn.started", 2*time.Second)
+	event := waitForWebhook(t, webhookEvents, "turn.started", 2*time.Second)
+	data := event["data"].(map[string]interface{})
+	boardData := data["data"].(map[string]interface{})
+	bs.CurrentPlayerID = boardData["current_player_id"].(string)
+	bs.CurrentEntityID = boardData["current_entity_id"].(string)
+	
 	p1, p2 := findActorPositions(bs)
 	assert.NotEqual(t, p1, p2, "Entities must occupy distinct positions at start")
 
@@ -115,6 +118,8 @@ func executeStart(t *testing.T, router *gin.Engine, matchID, callbackURL string)
 func executeAction(t *testing.T, router *gin.Engine, matchID, playerID, entityID, actionType string, coords []api.Position, skillID string) {
 	// 1. Payload Creation: Define the action intent (move, attack, skill).
 	actionReq := api.ArenaActionMessage{
+		RequestID: uuid.New().String(),
+		Success:   true,
 		Data: api.ArenaActionRequest{
 			PlayerID: playerID, Type: actionType, TargetCoords: coords, EntityID: entityID, SkillID: skillID,
 		},
@@ -137,19 +142,20 @@ func findActorPositions(bs api.BoardState) (p1, p2 api.Position) {
 }
 
 // waitForWebhook blocks until an event of the specified type arrives on the channel.
-func waitForWebhook(t *testing.T, events <-chan map[string]interface{}, expectedType string, timeout time.Duration) {
+func waitForWebhook(t *testing.T, events <-chan map[string]interface{}, expectedType string, timeout time.Duration) map[string]interface{} {
 	// 1. Loop Setup: Poll the channel until the target event or timeout occurs.
 	deadline := time.After(timeout)
 	for {
 		select {
 		case event := <-events:
 			// 2. Type Check: Inspect the 'event_type' field in the incoming envelope.
-			if isEventType(event, expectedType) { return }
+			if isEventType(event, expectedType) { return event }
 		case <-deadline:
 			// 3. Failure: Terminate the test if the event is not received in time.
 			t.Fatalf("Timeout waiting for webhook event: %s", expectedType)
 		}
 	}
+	return nil
 }
 
 // isEventType identifies if a raw event map matches the target type string.

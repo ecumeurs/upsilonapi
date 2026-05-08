@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
+	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestMapping_ZoneAndEffect(t *testing.T) {
 		{
 			SkillID: uuid.New().String(), Name: "Fireball", Behavior: "Zone",
 			Zone: &zoneName,
-			Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"damage": {Value: intPtr(10)}}},
+			Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{property.Damage.String(): {Value: intPtr(10)}}},
 		},
 	}
 
@@ -38,20 +39,14 @@ func TestMapping_ZoneAndEffect(t *testing.T) {
 	// 3. Validation Phase: Retrieve the engine-side skill and verify its internal property mapping.
 	require.NotEmpty(t, entities[0].Skills)
 	var engineSkill *api.EquippedSkill
-	for _, s := range NewEntity(entities[0]).EquippedSkills {
+	for _, s := range api.NewEntity(entities[0]).EquippedSkills {
 		if s.Name == "Fireball" { engineSkill = &s; break }
 	}
 
 	// 4. Verification: Confirm the 'cross' zone and 'damage' effect were correctly mapped.
 	require.NotNil(t, engineSkill, "skill 'Fireball' must exist in the engine")
 	assert.Equal(t, "cross", *engineSkill.Zone, "zone pattern must be preserved in the engine state")
-	assert.Equal(t, 10, *engineSkill.Effect.Data["damage"].Value, "effect properties must be correctly serialized to the engine")
+	assert.Equal(t, 10, *engineSkill.Effect.Data[property.Damage.String()].Value, "effect properties must be correctly serialized to the engine")
 	
 	b.DestroyArena(matchID)
-}
-
-// intPtr is a utility to create a pointer to an integer value.
-func intPtr(i int) *int {
-	// 1. Memory Management: Allocate integer on the heap.
-	return &i
 }

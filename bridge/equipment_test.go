@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
+	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestArenaInit_EquippedItemsBecomeBuffs(t *testing.T) {
 	matchID := uuid.New()
 	req := createTestRequest(matchID)
 	req.Players[0].Entities[0].EquippedItems = []api.EquippedItem{
-		{ItemID: uuid.New().String(), Name: "PowerRing", Slot: "finger", Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"atk": {Value: intPtr(5)}}}},
+		{ItemID: uuid.New().String(), Name: "PowerRing", Slot: "finger", Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{property.Attack.String(): {Value: intPtr(5)}}}},
 	}
 
 	// 2. Execution Phase: Initialize the arena and allow the async start sequence to settle.
@@ -55,14 +56,8 @@ func TestArenaInit_StatMapping(t *testing.T) {
 
 	// 3. Validation Phase: Ensure the engine properties for Attack and Defense match the input exactly.
 	ent := entities[0]
-	assert.Equal(t, 99, ent.GetPropertyI("attack").I(), "attack stat must be mapped correctly to the engine")
-	assert.Equal(t, 42, ent.GetPropertyI("defense").I(), "defense stat must be mapped correctly to the engine")
+	assert.Equal(t, 99, ent.GetPropertyI(property.Attack).I(), "attack stat must be mapped correctly to the engine")
+	assert.Equal(t, 42, ent.GetPropertyI(property.Defense).I(), "defense stat must be mapped correctly to the engine")
 	
 	b.DestroyArena(matchID)
-}
-
-// intPtr is a utility to create a pointer to an integer value.
-func intPtr(i int) *int {
-	// 1. Memory Management: Allocate integer on the heap.
-	return &i
 }

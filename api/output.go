@@ -35,6 +35,9 @@ type ArenaStartResponse struct {
 	InitialState BoardState `json:"initial_state"`
 }
 
+// ArenaStartResponseMessage is the standard success envelope for match initialization.
+type ArenaStartResponseMessage = stdmessage.StandardMessage[ArenaStartResponse, stdmessage.MetaNil]
+
 // ActiveMatchStatsResponse returns quantitative data about running arenas.
 type ActiveMatchStatsResponse struct {
 	// ActiveCount is the total number of non-archived matches.
