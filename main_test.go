@@ -22,6 +22,8 @@ import (
 )
 
 // setupRouter initializes the Gin engine with the standard Upsilon routing table.
+// @test-link [[api_go_routing_table]]
+// @test-link [[api_go_battle_engine]]
 func setupRouter() *gin.Engine {
 	// 1. Initial Setup: Create a default Gin engine with recovery and logging.
 	r := gin.Default()
@@ -36,6 +38,8 @@ func setupRouter() *gin.Engine {
 }
 
 // TestArenaStartEndpoint verifies the /v1/arena/start REST API contract.
+// It ensures that the match initiation request is correctly received and acknowledged.
+// @test-link [[api_go_battle_start]]
 func TestArenaStartEndpoint(t *testing.T) {
 	// 1. Environment: Setup the router and unique match metadata.
 	router := setupRouter()
@@ -62,6 +66,8 @@ func TestArenaStartEndpoint(t *testing.T) {
 }
 
 // TestBattleFullRoundtrip executes a multi-turn tactical sequence to verify engine-bridge consistency.
+// It follows the lifecycle from match start to first action and verifies state broadcasts.
+// @test-link [[api_go_battle_engine]]
 func TestBattleFullRoundtrip(t *testing.T) {
 	// 1. Setup: Initialize communication channels and mock callback server.
 	router := setupRouter()
@@ -165,6 +171,7 @@ func performPost(r *gin.Engine, url string, payload interface{}) *httptest.Respo
 }
 
 // requireStatus is a simple helper to assert HTTP status codes.
+// It terminates the test immediately if the received status does not match the expected one.
 func requireStatus(t *testing.T, w *httptest.ResponseRecorder, expected int) {
 	if w.Code != expected {
 		t.Fatalf("Expected status %d, got %d. Body: %s", expected, w.Code, w.Body.String())

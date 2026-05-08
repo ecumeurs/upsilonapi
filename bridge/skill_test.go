@@ -1,7 +1,7 @@
 // Package bridge provides unit tests for the entity skill registration and conflict resolution logic.
 // It ensures that skills from various origins (inventory, items) are correctly prioritized and mapped.
-// @spec-link [[api_go_battle_engine]]
-// @spec-link [[api_character_skill_inventory]]
+// @test-link [[api_go_battle_engine]]
+// @test-link [[api_character_skill_inventory]]
 package bridge
 
 import (

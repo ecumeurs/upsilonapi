@@ -1,3 +1,6 @@
-upsilonapi*.db
+upsilonapi
+bin/*
+*.db
 *.sqlite
 *.sqlite3
+*.log

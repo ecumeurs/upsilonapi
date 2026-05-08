@@ -18,8 +18,9 @@ import (
 )
 
 // TestArenaStart1v1PvP verifies that a 1v1 PvP match can be started and triggers a game.started event.
-// @spec-link [[api_go_battle_engine]]
-// @spec-link [[api_go_battle_start]]
+// It validates the full request-response-callback cycle including UUID consistency.
+// @test-link [[api_go_battle_engine]]
+// @test-link [[api_go_battle_start]]
 func TestArenaStart1v1PvP(t *testing.T) {
 	// 1. Setup Phase: Initialize the API router and a mock webhook receiver channel.
 	router := setupRouter()
@@ -70,6 +71,7 @@ func TestArenaStart1v1PvP(t *testing.T) {
 }
 
 // verifyAsyncGameStart blocks until a game.started event for the given match is received.
+// It uses a timeout to prevent deadlocking the test suite if the engine fails to respond.
 func verifyAsyncGameStart(t *testing.T, events chan map[string]interface{}, matchID string) {
 	timeout := time.After(5 * time.Second)
 	for {

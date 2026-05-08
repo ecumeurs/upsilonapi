@@ -1,7 +1,7 @@
 // Package api provides unit tests for the polymorphic property DTOs and serialization logic.
 // It ensures that engine properties (int, float, bool, string) are correctly mapped to and from JSON.
-// @spec-link [[api_go_battle_engine]]
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @test-link [[api_go_battle_engine]]
+// @test-link [[mechanic_mec_skill_payload_resolution]]
 package api
 
 import (
