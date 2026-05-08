@@ -12,3 +12,5 @@
 {"time":"2026-05-08T07:35:38Z","tool":"atd-update","msg":"Updated rule_mapmaker_board_generation_constraints.atom.md | set: 9 keys | updated body sections | renamed from mapmaker_board_generation_constraints.atom.md"}
 {"time":"2026-05-08T07:40:04Z","tool":"atd-update","msg":"Updated rule_mapmaker_seed_determinism.atom.md | set: 1 keys"}
 {"time":"2026-05-08T07:40:07Z","tool":"atd-update","msg":"Updated rule_mapmaker_board_generation_constraints.atom.md | set: 1 keys"}
+{"time":"2026-05-08T07:59:39Z","tool":"atd-update","msg":"Updated mechanic_mech_ai_termination.atom.md | set: 1 keys"}
+{"time":"2026-05-08T07:59:41Z","tool":"atd-update","msg":"Updated mechanic_mech_arena_lifecycle.atom.md | set: 1 keys"}

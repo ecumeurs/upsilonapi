@@ -1,7 +1,7 @@
 // Package bridge provides unit tests for the item-to-buff conversion logic.
 // It ensures that equipped items are correctly translated into active engine buffs during arena initialization.
-// @spec-link [[api_go_battle_engine]]
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @test-link [[api_go_battle_engine]]
+// @test-link [[mechanic_mec_skill_payload_resolution]]
 package bridge
 
 import (
