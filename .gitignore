@@ -4,3 +4,5 @@ bin/*
 *.sqlite
 *.sqlite3
 *.log
+
+pipeline_output/
