@@ -1,3 +1,5 @@
+// Package api provides the input Data Transfer Objects (DTOs) for the Upsilon Hub API.
+// It defines the request schemas for starting arenas, executing actions, and performing state recovery.
 package api
 
 import (
@@ -7,9 +9,10 @@ import (
 )
 
 // @spec-link [[rule_dto_strict_typing]]
+
 // Flex handles inconsistent JSON from external systems (e.g. Laravel)
 // where an empty object might be represented as an empty array [].
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// This is critical for maintaining compatibility with PHP-to-Go JSON serialization quirks.
 type Flex[T any] struct {
 	Data T
 }
@@ -23,16 +26,15 @@ func (f Flex[T]) MarshalJSON() ([]byte, error) {
 // It explicitly handles the "[]" case to avoid unmarshaling errors for empty objects.
 func (f *Flex[T]) UnmarshalJSON(data []byte) error {
 	if string(data) == "[]" {
-		// Return zero value for T
+		// Return zero value for T to handle PHP's empty-map-to-array conversion.
 		return nil
 	}
 	return json.Unmarshal(data, &f.Data)
 }
 
 // PropertyDTO represents a single property value in a strictly typed manner.
-// It supports integers (with optional max for counters), booleans, and strings.
-// @spec-link [[rule_dto_strict_typing]]
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// It supports integers (with optional max for counters), floats, booleans, and strings.
+// @spec-link [[mechanic_property_serialization]]
 type PropertyDTO struct {
 	Value  *int     `json:"value,omitempty"`
 	FValue *float64 `json:"fvalue,omitempty"`
@@ -43,10 +45,6 @@ type PropertyDTO struct {
 
 // MarshalJSON satisfies the json.Marshaler interface.
 func (p PropertyDTO) MarshalJSON() ([]byte, error) {
-	// If it's a simple value, we might want to flatten it? 
-	// No, the user said "mostly int, and some time counter int. So we may have to have a generic property DTO for this will nullable max."
-	// So we should output as a struct if it's a counter (value + max) or just the value?
-	// To be safe and contractual, let's always output the struct as defined by the JSON tags.
 	type alias PropertyDTO
 	return json.Marshal(alias(p))
 }
@@ -54,7 +52,7 @@ func (p PropertyDTO) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON satisfies the json.Unmarshaler interface.
 // It implements polymorphic unmarshaling to handle both structured DTOs and primitives.
 func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
-	// Try unmarshaling as a struct first (structured properties)
+	// 1. Structural Attempt: Try unmarshaling as a structured object first.
 	type alias PropertyDTO
 	var a alias
 	if err := json.Unmarshal(data, &a); err == nil && (a.Value != nil || a.Max != nil || a.BValue != nil || a.SValue != nil || a.FValue != nil) {
@@ -62,7 +60,7 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	// Fallback to primitives
+	// 2. Primitive Fallback: Attempt to parse the raw JSON data into known primitive types.
 	var i int
 	if err := json.Unmarshal(data, &i); err == nil {
 		p.Value = &i
@@ -87,23 +85,27 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 	return fmt.Errorf("invalid property format: %s", string(data))
 }
 
+// PropertyMap is a utility type for collections of named engine properties.
 type PropertyMap = map[string]PropertyDTO
 
 // @spec-link [[api_go_battle_engine]]
 
+// Position represents a 2D coordinate on the engine grid.
 type Position struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 }
 
+// ArenaActionRequest defines the payload for executing a tactical engine action.
 type ArenaActionRequest struct {
 	PlayerID     string     `json:"player_id"`
-	Type         string     `json:"type"`
+	Type         string     `json:"type"` // move, attack, skill, pass, forfeit
 	TargetCoords []Position `json:"target_coords"`
 	EntityID     string     `json:"entity_id"`
 	SkillID      string     `json:"skill_id,omitempty"`
 }
 
+// Entity represents a combatant within the engine.
 // @spec-link [[entity_character]]
 type Entity struct {
 	ID             string         `json:"id"`
@@ -116,33 +118,35 @@ type Entity struct {
 	Defense        int            `json:"defense"`
 	Move           int            `json:"move"`
 	MaxMove        int            `json:"max_move"`
-	Position       Position       `json:"position"` // not used at start
+	Position       Position       `json:"position"`
 	EquippedItems  []EquippedItem `json:"equipped_items"`
-	Buffs          []Buff         `json:"buffs"`           // Added for engine state transparency [[mec_item_buff_application]]
+	Buffs          []Buff         `json:"buffs"`
 	EquippedSkills []EquippedSkill `json:"equipped_skills"`
 	IsSelf         bool           `json:"is_self"`
 	Dead           bool           `json:"dead"`
 }
 
+// EquippedSkill carries the tactical definition of an entity's ability.
 // @spec-link [[api_character_skill_inventory]]
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
 type EquippedSkill struct {
-	SkillID   string              `json:"skill_id"`
-	Name      string              `json:"name"`
-	Behavior  string              `json:"behavior"`
-	Targeting Flex[PropertyMap]   `json:"targeting"`
-	Costs     Flex[PropertyMap]   `json:"costs"`
-	Effect    Flex[PropertyMap]   `json:"effect"`
-	Zone      *string             `json:"zone,omitempty"`
-	Origin    string              `json:"origin,omitempty"` // "inventory" | "item:<item_id>"
+	SkillID   string            `json:"skill_id"`
+	Name      string            `json:"name"`
+	Behavior  string            `json:"behavior"` // Direct, Zone, Reaction
+	Targeting Flex[PropertyMap] `json:"targeting"`
+	Costs     Flex[PropertyMap] `json:"costs"`
+	Effect    Flex[PropertyMap] `json:"effect"`
+	Zone      *string           `json:"zone,omitempty"`
+	Origin    string            `json:"origin,omitempty"` // "inventory" | "item:<item_id>"
 }
 
+// Buff represents a temporary or permanent property modification on an entity.
 type Buff struct {
 	OriginID   string            `json:"origin_id"`
 	Forever    bool              `json:"forever"`
 	Properties Flex[PropertyMap] `json:"properties"`
 }
 
+// EquippedItem represents an item that grants stats or skills to an entity.
 type EquippedItem struct {
 	ItemID     string            `json:"item_id"`
 	Name       string            `json:"name"`
@@ -152,6 +156,7 @@ type EquippedItem struct {
 	Zone       *string           `json:"zone,omitempty"`
 }
 
+// Player represents a human or AI participant in a match.
 // @spec-link [[entity_player]]
 type Player struct {
 	ID       string   `json:"id"`
@@ -161,35 +166,35 @@ type Player struct {
 	IA       bool     `json:"ia"`
 }
 
+// ArenaStartRequest is the payload for initializing a new battle.
 type ArenaStartRequest struct {
 	MatchID     string   `json:"match_id"`
 	CallbackURL string   `json:"callback_url"`
 	Players     []Player `json:"players"`
 }
 
+// ArenaForfeitRequest is the payload for a player voluntarily leaving the match.
 type ArenaForfeitRequest struct {
 	PlayerID string `json:"player_id"`
 }
 
-// ArenaResurrectRequest carries persisted board state from Laravel to rebuild
-// a crashed arena. Players carry entities with current HP/Move/Position/Buffs/Skills.
-// ISS-054: HasMoved/HasActed flags are not preserved (accepted mid-turn state loss).
+// ArenaResurrectRequest carries persisted board state from Laravel to rebuild a crashed arena.
 type ArenaResurrectRequest struct {
-	MatchID         string             `json:"match_id"`
-	CallbackURL     string             `json:"callback_url"`
-	Players         []Player           `json:"players"`
-	Grid            ResurrectGrid      `json:"grid"`
-	Turns           []ResurrectTurn    `json:"turns"`
-	CurrentEntityID string             `json:"current_entity_id"`
-	Version         int64              `json:"version"`
+	MatchID         string          `json:"match_id"`
+	CallbackURL     string          `json:"callback_url"`
+	Players         []Player        `json:"players"`
+	Grid            ResurrectGrid   `json:"grid"`
+	Turns           []ResurrectTurn `json:"turns"`
+	CurrentEntityID string          `json:"current_entity_id"`
+	Version         int64           `json:"version"`
 }
 
 // ResurrectGrid is the 2D projection of the engine grid sufficient to rebuild pathfinding.
 type ResurrectGrid struct {
-	Width     int                `json:"width"`
-	Height    int                `json:"height"`   // Y dimension (Length)
-	MaxHeight int                `json:"max_height"` // Z ceiling
-	Cells     [][]ResurrectCell  `json:"cells"`
+	Width     int               `json:"width"`
+	Height    int               `json:"height"`   // Y dimension (Length)
+	MaxHeight int               `json:"max_height"` // Z ceiling
+	Cells     [][]ResurrectCell `json:"cells"`
 }
 
 // ResurrectCell carries per-column surface info needed to reconstruct the 3D grid.

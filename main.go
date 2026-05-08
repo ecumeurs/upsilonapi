@@ -1,7 +1,7 @@
 // Package main provides the entry point for the UpsilonAPI server.
 // This server acts as an HTTP bridge to the UpsilonBattle engine.
-// @spec-link [[upsilonapi:module_upsilonapi]]
-// @spec-link [[upsilonapi:api_bridge_orchestration]]
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[api_go_health_check]]
 package main
 
 import (
@@ -14,13 +14,14 @@ import (
 
 // getGitRevision retrieves the current VCS revision from the build info.
 // It iterates through the build settings to find the "vcs.revision" key.
-// Returns "unknown" if the build info is unavailable or the revision is not found.
 func getGitRevision() string {
+	// 1. Build Info Retrieval: Access the embedded runtime build metadata.
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		return "unknown"
 	}
 
+	// 2. Setting Lookup: Iterate through the KV pairs to find the git hash.
 	for _, setting := range info.Settings {
 		if setting.Key == "vcs.revision" {
 			return setting.Value
@@ -31,22 +32,30 @@ func getGitRevision() string {
 
 // main is the primary entry point for the UpsilonAPI service.
 // It initializes the Gin router, sets up the API routes, and starts the server on port 8081.
-// The server handles arena lifecycle management, match statistics, and skill generation.
 func main() {
-	// Initialize the Gin router with default middleware (logger and recovery).
+	// 1. Framework Setup: Initialize the Gin router with default logger and recovery middleware.
 	r := gin.Default()
 
-	// Capture the current Git revision for logging and health checks.
+	// 2. Metadata Initialization: Capture the current Git revision for health reporting.
 	rev := getGitRevision()
 	logrus.Infof("Starting UpsilonAPI server on :8081 (rev: %s)", rev)
 
-	// @spec-link [[api_go_health_check]]
-	// Health check endpoint (used by Docker healthcheck in CI and orchestration tools).
+	// 3. Health Monitoring: Register the root health endpoint for orchestration heartbeats.
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "revision": rev})
 	})
 
-	// V1 API Group: All game orchestration endpoints are versioned under /v1.
+	// 4. API Routing: Register the V1 route group for match lifecycle and tactical operations.
+	registerV1Routes(r)
+
+	// 5. Server Startup: Launch the HTTP server on the designated bridge port.
+	if err := r.Run(":8081"); err != nil {
+		logrus.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+// registerV1Routes defines the routing table for version 1 of the Upsilon API.
+func registerV1Routes(r *gin.Engine) {
 	v1 := r.Group("/v1")
 	{
 		// Arena lifecycle management endpoints.
@@ -62,10 +71,4 @@ func main() {
 		// Procedural skill generation endpoints.
 		v1.POST("/skills/generate", handler.HandleSkillGenerate)
 	}
-
-	// Start the HTTP server. This call is blocking unless an error occurs.
-	if err := r.Run(":8081"); err != nil {
-		logrus.Fatalf("Failed to start server: %v", err)
-	}
 }
-

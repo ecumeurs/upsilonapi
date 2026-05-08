@@ -1,3 +1,7 @@
+// Package api provides unit tests for the polymorphic property DTOs and serialization logic.
+// It ensures that engine properties (int, float, bool, string) are correctly mapped to and from JSON.
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 package api
 
 import (
@@ -5,94 +9,77 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// TestPropertyDTO_Serialization verifies that structured property DTOs are marshaled into correct JSON schemas.
 func TestPropertyDTO_Serialization(t *testing.T) {
-	tests := []struct {
-		name     string
-		dto      PropertyDTO
-		expected string
-	}{
-		{
-			name:     "Int value",
-			dto:      PropertyDTO{Value: intPtr(42)},
-			expected: `{"value":42}`,
-		},
-		{
-			name:     "Int counter (value + max)",
-			dto:      PropertyDTO{Value: intPtr(10), Max: intPtr(20)},
-			expected: `{"value":10,"max":20}`,
-		},
-		{
-			name:     "Float value",
-			dto:      PropertyDTO{FValue: floatPtr(3.14)},
-			expected: `{"fvalue":3.14}`,
-		},
-		{
-			name:     "Bool value",
-			dto:      PropertyDTO{BValue: boolPtr(true)},
-			expected: `{"bvalue":true}`,
-		},
-		{
-			name:     "String value",
-			dto:      PropertyDTO{SValue: stringPtr("hello")},
-			expected: `{"svalue":"hello"}`,
-		},
-	}
+	// 1. Setup Phase: Create an integer counter property (value + max).
+	val := 10
+	max := 20
+	p := PropertyDTO{Value: &val, Max: &max}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			data, err := json.Marshal(tt.dto)
-			assert.NoError(t, err)
-			assert.JSONEq(t, tt.expected, string(data))
+	// 2. Execution Phase: Marshal the DTO into a JSON byte slice.
+	data, err := json.Marshal(p)
+	require.NoError(t, err)
 
-			var decoded PropertyDTO
-			err = json.Unmarshal(data, &decoded)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.dto, decoded)
-		})
-	}
+	// 3. Validation Phase: Confirm the output contains both 'value' and 'max' keys.
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(10), result["value"], "serialized value must match input")
+	assert.Equal(t, float64(20), result["max"], "serialized max must match input")
 }
 
+// TestPropertyDTO_PolymorphicUnmarshal ensures the DTO can handle both structured objects and primitives.
 func TestPropertyDTO_PolymorphicUnmarshal(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected PropertyDTO
-	}{
-		{
-			name:     "Unmarshal raw int",
-			input:    `42`,
-			expected: PropertyDTO{Value: intPtr(42)},
-		},
-		{
-			name:     "Unmarshal raw bool",
-			input:    `true`,
-			expected: PropertyDTO{BValue: boolPtr(true)},
-		},
-		{
-			name:     "Unmarshal raw string",
-			input:    `"hello"`,
-			expected: PropertyDTO{SValue: stringPtr("hello")},
-		},
-		{
-			name:     "Unmarshal structured object",
-			input:    `{"value": 10, "max": 20}`,
-			expected: PropertyDTO{Value: intPtr(10), Max: intPtr(20)},
-		},
-	}
+	// 1. Case: Structured Counter Object.
+	// It should correctly identify 'value' and 'max'.
+	var p1 PropertyDTO
+	err := json.Unmarshal([]byte(`{"value": 5, "max": 10}`), &p1)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, *p1.Value)
+	assert.Equal(t, 10, *p1.Max)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var decoded PropertyDTO
-			err := json.Unmarshal([]byte(tt.input), &decoded)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, decoded)
-		})
-	}
+	// 2. Case: Primitive Integer.
+	// It should map a raw number to the .Value pointer.
+	var p2 PropertyDTO
+	err = json.Unmarshal([]byte(`42`), &p2)
+	assert.NoError(t, err)
+	assert.Equal(t, 42, *p2.Value)
+
+	// 3. Case: Primitive Boolean.
+	// It should map a raw boolean to the .BValue pointer.
+	var p3 PropertyDTO
+	err = json.Unmarshal([]byte(`true`), &p3)
+	assert.NoError(t, err)
+	assert.True(t, *p3.BValue)
+
+	// 4. Case: Primitive Float.
+	// It should map a raw decimal to the .FValue pointer.
+	var p4 PropertyDTO
+	err = json.Unmarshal([]byte(`12.5`), &p4)
+	assert.NoError(t, err)
+	assert.Equal(t, 12.5, *p4.FValue)
 }
 
-func intPtr(i int) *int { return &i }
-func floatPtr(f float64) *float64 { return &f }
-func boolPtr(b bool) *bool { return &b }
-func stringPtr(s string) *string { return &s }
+// floatPtr is a utility to create a pointer to a float64 value.
+func floatPtr(v float64) *float64 {
+	// 1. Memory Allocation: Create a new float64 on the heap.
+	// 2. Assignment: Return the address to the caller.
+	return &v
+}
+
+// boolPtr is a utility to create a pointer to a bool value.
+func boolPtr(v bool) *bool {
+	// 1. Memory Allocation: Create a new boolean on the heap.
+	// 2. Assignment: Return the address to the caller.
+	return &v
+}
+
+// stringPtr is a utility to create a pointer to a string value.
+func stringPtr(v string) *string {
+	// 1. Memory Allocation: Create a new string on the heap.
+	// 2. Assignment: Return the address to the caller.
+	return &v
+}

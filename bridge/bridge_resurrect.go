@@ -1,7 +1,6 @@
+// Package bridge provides the resurrection logic to recover engine state after service interruptions.
+// It ensures that matches can be seamlessly resumed with full entity, buff, and initiative persistence.
 package bridge
-
-// @spec-link [[api_battle_proxy]]
-// @spec-link [[mechanic_mech_arena_lifecycle]]
 
 import (
 	"fmt"
@@ -25,272 +24,292 @@ import (
 	"github.com/google/uuid"
 )
 
-// ResurrectArena rebuilds a crashed arena from a persisted board state (ISS-054).
-// It reconstructs the grid, entities, turner queue, and controllers, then hands the
-// turn to the entity that was active when the engine went down.
-func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardState, error) {
-	if req.MatchID == "" {
-		return api.BoardState{}, fmt.Errorf("mandatory field match_id is missing")
-	}
-	matchID, err := uuid.Parse(req.MatchID)
-	if err != nil {
-		return api.BoardState{}, fmt.Errorf("invalid match_id: %w", err)
-	}
-	if req.CallbackURL == "" {
-		return api.BoardState{}, fmt.Errorf("mandatory field callback_url is missing")
-	}
-	if len(req.Players) == 0 {
-		return api.BoardState{}, fmt.Errorf("arena must have at least one player")
-	}
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mech_arena_lifecycle]]
 
-	// Idempotency: if arena is already alive (e.g. double-call), reject.
-	b.mu.RLock()
-	_, exists := b.arenas[matchID]
-	b.mu.RUnlock()
-	if exists {
+// ResurrectArena rebuilds a crashed arena from a persisted board state (ISS-054).
+func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardState, error) {
+	// 1. Validation: Ensure all mandatory identifiers and rosters are present.
+	matchID, err := validateResurrectRequest(req)
+	if err != nil { return api.BoardState{}, err }
+	// 2. Idempotency: Reject recovery if the match is already active in memory.
+	if b.isArenaActive(matchID) {
 		return api.BoardState{}, fmt.Errorf("arena %s is already running — resurrection not needed", matchID)
 	}
-
-	// 1. Rebuild grid from serialized 2D projection.
+	// 3. Grid Reconstruction: Rebuild the 3D engine grid from the 2D serialized projection.
 	g := resurrectGrid(req.Grid)
+	// 4. Arena Setup: Initialize the core BattleArena container and its metadata.
+	battleArena := b.initResurrectedArena(matchID, g, req)
+	// 5. Entity Restoration: Hydrate the engine with saved characters, stats, and buffs.
+	if err := b.restoreEntities(battleArena, req); err != nil { return api.BoardState{}, err }
+	// 6. State Recovery: Restore the initiative timeline and versioning metadata.
+	currentEntityID := b.restoreEngineState(battleArena, req)
+	// 7. Connectivity: Re-establish human and AI controllers for the session.
+	b.reconnectControllers(battleArena, matchID, req)
+	// 8. Lifecycle: Start the Ruler actor and hand off the current turn.
+	battleArena.Ruler.Start()
+	b.registerAndHandOff(matchID, battleArena, currentEntityID)
+	// 9. Response: Return a full board state snapshot for client synchronization.
+	return b.buildResurrectionBoardState(matchID, battleArena, req), nil
+}
 
-	// 2. Create new arena and configure it.
-	battleArena := battlearena.NewBattleArena(matchID)
-	battleArena.Metadata["CallbackURL"] = req.CallbackURL
-	battleArena.Metadata["Players"] = req.Players
-	battleArena.Ruler.ID = matchID
-	battleArena.Ruler.SetGrid(g)
-	battleArena.Ruler.SetNbControllers(len(req.Players))
+// validateResurrectRequest checks for missing fields and malformed UUIDs.
+func validateResurrectRequest(req api.ArenaResurrectRequest) (uuid.UUID, error) {
+	// 1. ID Verification: Ensure match_id exists and is a valid UUID string.
+	if req.MatchID == "" { return uuid.Nil, fmt.Errorf("mandatory field match_id is missing") }
+	matchID, err := uuid.Parse(req.MatchID)
+	if err != nil { return uuid.Nil, fmt.Errorf("invalid match_id format: %w", err) }
+	// 2. Target Routing: Verify that a callback URL is provided for event delivery.
+	if req.CallbackURL == "" { return uuid.Nil, fmt.Errorf("mandatory field callback_url is missing") }
+	// 3. Roster Check: Resurrection requires at least one participating player.
+	if len(req.Players) == 0 { return uuid.Nil, fmt.Errorf("arena roster must not be empty") }
+	return matchID, nil
+}
 
-	// 3. Restore entities from saved board state.
+// isArenaActive checks the thread-safe registry for an existing arena instance.
+func (b *ArenaBridge) isArenaActive(matchID uuid.UUID) bool {
+	// 1. Thread Safety: Use RLock for safe concurrent registry access.
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	_, exists := b.arenas[matchID]
+	return exists
+}
+
+// initResurrectedArena creates a new BattleArena with the restored grid and metadata.
+func (b *ArenaBridge) initResurrectedArena(matchID uuid.UUID, g *grid.Grid, req api.ArenaResurrectRequest) *battlearena.BattleArena {
+	// 1. Setup: Instantiate core BattleArena with the match ID.
+	ba := battlearena.NewBattleArena(matchID)
+	// 2. Metadata: Inject callback URL and original player list.
+	ba.Metadata["CallbackURL"] = req.CallbackURL
+	ba.Metadata["Players"] = req.Players
+	// 3. Ruler Config: Hydrate Ruler with reconstructed grid and player count.
+	ba.Ruler.ID = matchID
+	ba.Ruler.SetGrid(g)
+	ba.Ruler.SetNbControllers(len(req.Players))
+	return ba
+}
+
+// restoreEntities populates the engine with entities from the resurrection request.
+func (b *ArenaBridge) restoreEntities(ba *battlearena.BattleArena, req api.ArenaResurrectRequest) error {
+	// 1. Population: Re-create entities for every player in the roster.
 	for _, p := range req.Players {
-		playerID, err := uuid.Parse(p.ID)
-		if err != nil {
-			return api.BoardState{}, fmt.Errorf("invalid player_id for player %s: %w", p.Nickname, err)
-		}
+		pID, _ := uuid.Parse(p.ID)
 		for _, ee := range p.Entities {
-			if ee.Dead || ee.HP <= 0 {
-				continue // skip dead entities — they are no longer in the game
-			}
-			entID, err := uuid.Parse(ee.ID)
-			if err != nil {
-				return api.BoardState{}, fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
-			}
-			if ee.MaxHP <= 0 {
-				return api.BoardState{}, fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
-			}
-
-			e := entity.Entity{
-				ID:           entID,
-				Type:         entity.Character,
-				Name:         ee.Name,
-				ControllerID: playerID,
-			}
-			e.Properties = make(map[string]property.Property)
-			e.Skills = make(map[uuid.UUID]skill.Skill)
-
-			// Restore exact persisted position; no random fallback.
-			e.Position = position.New(ee.Position.X, ee.Position.Y, g.TopMostGroundAt(ee.Position.X, ee.Position.Y))
-
-			e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
-			e.RepsertPropertyCValue(property.HP, ee.HP)
-			e.RepsertPropertyCMaxValue(property.Movement, ee.MaxMove)
-			e.RepsertPropertyCValue(property.Movement, ee.Move)
-			e.RepsertPropertyValue(property.Attack, ee.Attack)
-			e.RepsertPropertyValue(property.Defense, ee.Defense)
-			e.RepsertPropertyValue(property.TeamID, p.Team)
-
-			// Re-apply persisted buffs (item effects, status effects, etc.).
-			for _, b := range ee.Buffs {
-				originID, err := uuid.Parse(b.OriginID)
-				if err != nil {
-					log.Printf("[ArenaBridge.Resurrect] Skipping buff with bad origin_id for entity %s", ee.Name)
-					continue
-				}
-				buff := property.TemporaryProperties{
-					Forever:        b.Forever,
-					OriginEntityID: originID,
-					Properties:     make(map[string]property.Property),
-				}
-				for key, dto := range b.Properties.Data {
-					effectiveKey := key
-					if alias, ok := propertyAliasMap[effectiveKey]; ok {
-						effectiveKey = alias
-					}
-					var p property.Property
-					if prop := def.ItemProperty(property.ItemProperties(effectiveKey)); prop != nil {
-						p = prop
-					} else if prop := def.EntityProperty(property.EntityProperties(effectiveKey)); prop != nil {
-						p = prop
-					}
-					if p != nil {
-						if setSkillPropValue(p, dto) {
-							buff.Properties[property.PropertyToString(effectiveKey)] = p
-						}
-					}
-				}
-				e.RegisterBuff(buff)
-			}
-
-			// Restore equipped skills.
-			for _, es := range ee.EquippedSkills {
-				skillID, err := uuid.Parse(es.SkillID)
-				if err != nil {
-					log.Printf("[ArenaBridge.Resurrect] Skipping skill %s for entity %s: invalid UUID", es.Name, ee.Name)
-					continue
-				}
-				bh := def.DefaultBehavior()
-				bh.SetS(string(parseBehaviorType(es.Behavior)))
-				s := skill.Skill{
-					ID:        skillID,
-					Name:      es.Name,
-					Behavior:  bh,
-					Targeting: buildSkillPropertyMap(es.Targeting.Data),
-					Costs:     buildSkillPropertyMap(es.Costs.Data),
-					Effect:    buildSkillEffect(es.Effect.Data),
-				}
-				e.RegisterSkill(s)
-			}
-
-			battleArena.Ruler.AddEntity(e)
+			// 2. Vitality: Only resurrect entities that have positive HP and are not dead.
+			if ee.Dead || ee.HP <= 0 { continue }
+			// 3. Conversion: Map the DTO back into the engine's internal Entity model.
+			ent, err := b.dtoToEntity(pID, ee, p.Team, ba.Ruler.GameState.Grid)
+			if err != nil { return err }
+			// 4. Registration: Push the hydrated entity into the Ruler state.
+			ba.Ruler.AddEntity(ent)
 		}
 	}
+	return nil
+}
 
-	// 4. Restore turner queue and mark ruler as in-progress.
+// dtoToEntity converts a single entity DTO into an internal engine Entity.
+func (b *ArenaBridge) dtoToEntity(pID uuid.UUID, ee api.Entity, team int, g *grid.Grid) (entity.Entity, error) {
+	// 1. Core: Initialize internal Entity with base stats and calculated height-position.
+	entID, err := uuid.Parse(ee.ID)
+	if err != nil { return entity.Entity{}, err }
+	e := entity.Entity{
+		ID: entID, Type: entity.Character, Name: ee.Name, ControllerID: pID,
+		Properties: make(map[string]property.Property), Skills: make(map[uuid.UUID]skill.Skill),
+		Position: position.New(ee.Position.X, ee.Position.Y, g.TopMostGroundAt(ee.Position.X, ee.Position.Y)),
+	}
+	// 2. Properties: Restore current and max HP, Movement, Attack, Defense, and Team ID.
+	e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
+	e.RepsertPropertyCValue(property.HP, ee.HP)
+	e.RepsertPropertyCMaxValue(property.Movement, ee.MaxMove)
+	e.RepsertPropertyCValue(property.Movement, ee.Move)
+	e.RepsertPropertyValue(property.Attack, ee.Attack)
+	e.RepsertPropertyValue(property.Defense, ee.Defense)
+	e.RepsertPropertyValue(property.TeamID, team)
+	// 3. Accessories: Hydrate buffs and skills for the entity.
+	b.restoreEntityBuffs(&e, ee.Buffs)
+	b.restoreEntitySkills(&e, ee.EquippedSkills)
+	return e, nil
+}
+
+// restoreEntityBuffs re-injects saved buffs into an entity during resurrection.
+func (b *ArenaBridge) restoreEntityBuffs(e *entity.Entity, buffs []api.Buff) {
+	// 1. Buff Hydration: Iterate through every saved status effect.
+	for _, b := range buffs {
+		originID, err := uuid.Parse(b.OriginID)
+		if err != nil { continue }
+		buff := property.TemporaryProperties{
+			Forever: b.Forever, OriginEntityID: originID, Properties: make(map[string]property.Property),
+		}
+		// 2. Property Mapping: Resolve each buffered property back to its engine type.
+		for key, dto := range b.Properties.Data {
+			hydrateSingleBuffProperty(key, dto, &buff)
+		}
+		e.RegisterBuff(buff)
+	}
+}
+
+// hydrateSingleBuffProperty performs the individual property resolution for a buff.
+func hydrateSingleBuffProperty(key string, dto api.PropertyDTO, buff *property.TemporaryProperties) {
+	// 1. Alias Resolution: Check for property naming consistency.
+	effectiveKey := key
+	if alias, ok := propertyAliasMap[effectiveKey]; ok { effectiveKey = alias }
+	// 2. Definition Lookup: Identify if property belongs to Item or Entity family.
+	var p property.Property
+	if prop := def.ItemProperty(property.ItemProperties(effectiveKey)); prop != nil {
+		p = prop
+	} else if prop := def.EntityProperty(property.EntityProperties(effectiveKey)); prop != nil {
+		p = prop
+	}
+	// 3. Hydration: If valid, set the value and register in the buff container.
+	if p != nil && setSkillPropValue(p, dto) {
+		buff.Properties[property.PropertyToString(effectiveKey)] = p
+	}
+}
+
+// restoreEntitySkills populates an entity's skill map from the resurrection payload.
+func (b *ArenaBridge) restoreEntitySkills(e *entity.Entity, skills []api.EquippedSkill) {
+	// 1. Skill Hydration: Map every tactical ability back into the entity registry.
+	for _, es := range skills {
+		skillID, err := uuid.Parse(es.SkillID)
+		if err != nil { continue }
+		// 2. Behavior Config: Reconstruct the behavior and targeting logic.
+		bh := def.DefaultBehavior()
+		bh.SetS(string(parseBehaviorType(es.Behavior)))
+		s := skill.Skill{
+			ID: skillID, Name: es.Name, Behavior: bh,
+			Targeting: buildSkillPropertyMap(es.Targeting.Data),
+			Costs:     buildSkillPropertyMap(es.Costs.Data),
+			Effect:    buildSkillEffect(es.Effect.Data),
+		}
+		// 3. Registration: Inject into engine state.
+		e.RegisterSkill(s)
+	}
+}
+
+// restoreEngineState recovers the initiative timeline and current turn pointers.
+func (b *ArenaBridge) restoreEngineState(ba *battlearena.BattleArena, req api.ArenaResurrectRequest) uuid.UUID {
+	// 1. Timeline: Map saved turns into internal initiative queue structs.
 	var turnerTurns []turner.EntityTurn
 	for _, t := range req.Turns {
 		entID, err := uuid.Parse(t.EntityID)
-		if err != nil {
-			log.Printf("[ArenaBridge.Resurrect] Skipping turn entry with bad entity_id: %v", err)
-			continue
-		}
+		if err != nil { continue }
 		turnerTurns = append(turnerTurns, turner.EntityTurn{EntityId: entID, Delay: t.Delay})
 	}
+	// 2. Pointer Resolution: Identify the current acting entity and versioning.
 	currentEntityID := uuid.Nil
-	if req.CurrentEntityID != "" {
-		currentEntityID, err = uuid.Parse(req.CurrentEntityID)
-		if err != nil {
-			return api.BoardState{}, fmt.Errorf("invalid current_entity_id: %w", err)
-		}
-	}
-	battleArena.Ruler.Resurrect(turnerTurns, currentEntityID, req.Version)
+	if req.CurrentEntityID != "" { currentEntityID, _ = uuid.Parse(req.CurrentEntityID) }
+	// 3. Hydration: Push the initiative state into the Ruler.
+	ba.Ruler.Resurrect(turnerTurns, currentEntityID, req.Version)
+	return currentEntityID
+}
 
-	// 5. Start the Ruler actor.
-	battleArena.Ruler.Start()
-
-	// 6. Re-create controllers.
-	respChan := make(chan *message.Message)
-	defer close(respChan)
-	count := len(req.Players)
-
-	var humanPlayerIDs []uuid.UUID
+// reconnectControllers re-instantiates human and AI controllers for the match.
+func (b *ArenaBridge) reconnectControllers(ba *battlearena.BattleArena, matchID uuid.UUID, req api.ArenaResurrectRequest) {
+	// 1. Human Players: Identify represented player IDs for the shared proxy.
+	var humanIDs []uuid.UUID
 	for _, p := range req.Players {
-		if !p.IA {
-			humanPlayerIDs = append(humanPlayerIDs, uuid.MustParse(p.ID))
-		}
+		if !p.IA { humanIDs = append(humanIDs, uuid.MustParse(p.ID)) }
 	}
+	// 2. Proxy Initialization: Re-create the HTTPController for web callbacks.
 	var sharedHC *HTTPController
-	if len(humanPlayerIDs) > 0 {
-		sharedHC = NewHTTPController(matchID, req.CallbackURL, req.Players, humanPlayerIDs)
-		sharedHC.Ruler = battleArena.Ruler
+	if len(humanIDs) > 0 {
+		sharedHC = NewHTTPController(matchID, req.CallbackURL, req.Players, humanIDs)
+		sharedHC.Ruler = ba.Ruler
 		sharedHC.Start()
 	}
-
+	// 3. Handshake: Connect every player to the Ruler actor.
+	respChan := make(chan *message.Message, len(req.Players))
 	for _, p := range req.Players {
-		var ctrl actor.Communication
-		pID := uuid.MustParse(p.ID)
-		if p.IA {
-			iac := controllers.NewAggressiveController(pID, fmt.Sprintf("AggressiveController-%s", p.ID))
-			iac.Start()
-			ctrl = iac
-		} else {
-			ctrl = sharedHC
-		}
-		msg := message.Create(ctrl, rulermethods.AddController{
-			Controller:   ctrl,
-			ControllerID: pID,
-		}, rulermethods.AddControllerReply{})
-		battleArena.Ruler.SendActor(msg, respChan)
+		b.registerSingleController(ba.Ruler, p, sharedHC, respChan)
 	}
+	// 4. Synchronization: Wait for Ruler acknowledgements.
+	b.waitForControllerReplies(matchID, len(req.Players), respChan)
+}
 
+// registerSingleController connects a single player to the engine ruler.
+func (b *ArenaBridge) registerSingleController(r *ruler.Ruler, p api.Player, sharedHC *HTTPController, resp chan *message.Message) {
+	// 1. Actor Choice: Instantiate Aggressive (AI) or Proxy (Human) controller.
+	var ctrl actor.Communication
+	pID := uuid.MustParse(p.ID)
+	if p.IA {
+		iac := controllers.NewAggressiveController(pID, fmt.Sprintf("AggressiveController-%s", p.ID))
+		iac.Start()
+		ctrl = iac
+	} else {
+		ctrl = sharedHC
+	}
+	// 2. Messaging: Send AddController request to the Ruler actor.
+	msg := message.Create(ctrl, rulermethods.AddController{Controller: ctrl, ControllerID: pID}, rulermethods.AddControllerReply{})
+	r.SendActor(msg, resp)
+}
+
+// waitForControllerReplies blocks until the Ruler confirms all player connections.
+func (b *ArenaBridge) waitForControllerReplies(matchID uuid.UUID, count int, resp chan *message.Message) {
+	// 1. Barrier: Block until all controller-registration replies are received.
 	for i := 0; i < count; i++ {
-		log.Printf("[ArenaBridge.Resurrect] Waiting for AddController reply (%d/%d) for match %s", i+1, count, matchID)
 		select {
-		case msg := <-respChan:
-			log.Printf("[ArenaBridge.Resurrect] AddController reply for match %s (Error: %v)", matchID, msg.HasError)
+		case <-resp:
 		case <-time.After(5 * time.Second):
-			log.Printf("[ArenaBridge.Resurrect] TIMEOUT waiting for AddController reply for match %s", matchID)
+			log.Printf("[ArenaBridge.Resurrect] TIMEOUT: %s", matchID)
 		}
 	}
+}
 
-	// 7. Register arena and trigger resurrection turn hand-off.
+// registerAndHandOff finishes the resurrection by handshaking with the engine logic.
+func (b *ArenaBridge) registerAndHandOff(matchID uuid.UUID, ba *battlearena.BattleArena, currentEntityID uuid.UUID) {
+	// 1. Registry: Add the live arena to the bridge singleton.
 	b.mu.Lock()
-	b.arenas[matchID] = battleArena
+	b.arenas[matchID] = ba
 	b.mu.Unlock()
+	// 2. Hand-off: Signal the Ruler to resume tactical turn execution.
+	ba.Ruler.NotifyActor(message.Create(nil, rulermethods.Resurrect{CurrentEntityID: currentEntityID}, nil))
+}
 
-	battleArena.Ruler.NotifyActor(message.Create(nil, rulermethods.Resurrect{
-		CurrentEntityID: currentEntityID,
-	}, nil))
-
-	res := make([]entity.Entity, 0, 6)
-	for _, v := range battleArena.Ruler.GameState.Entities {
-		res = append(res, v)
-	}
+// buildResurrectionBoardState generates the final board state snapshot after recovery.
+func (b *ArenaBridge) buildResurrectionBoardState(matchID uuid.UUID, ba *battlearena.BattleArena, req api.ArenaResurrectRequest) api.BoardState {
+	// 1. Entity Extraction: Gather current engine entity snapshots.
+	entities := make([]entity.Entity, 0, len(ba.Ruler.GameState.Entities))
+	for _, v := range ba.Ruler.GameState.Entities { entities = append(entities, v) }
+	// 2. Projection: Build the API-standard BoardState snapshot.
 	return api.NewBoardState(
-		matchID,
-		battleArena.Ruler.GameState.Grid,
-		res,
-		req.Players,
-		battleArena.Ruler.GameState.Turner.GetTurnState(),
-		time.Now(),
-		time.Now().Add(30*time.Second),
-		0,
-		req.Version,
-		nil,
-	), nil
+		matchID, ba.Ruler.GameState.Grid, entities, req.Players,
+		ba.Ruler.GameState.Turner.GetTurnState(), time.Now(), time.Now().Add(30*time.Second),
+		0, req.Version, nil,
+	)
 }
 
 // resurrectGrid reconstructs a 3D engine grid from the 2D serialized projection.
-// Each (x,y) column gets dirt cells below and a ground (or obstacle) cell at the saved surface Z.
-// This ensures the resurrected arena has identical pathfinding constraints to the original.
-// @spec-link [[api_battle_proxy]]
 func resurrectGrid(rg api.ResurrectGrid) *grid.Grid {
-	// Initialize a new grid with dimensions matching the serialized request.
+	// 1. Dimensioning: Setup core grid with saved width and depth limits.
 	g := &grid.Grid{
-		Width:  rg.Width,
-		Length: rg.Height, // DTO field "height" is the Y dimension (Length in engine terms).
-		Height: rg.MaxHeight,
-		Cells:  make(map[position.Position]*cell.Cell),
+		Width: rg.Width, Length: rg.Height, Height: rg.MaxHeight,
+		Cells: make(map[position.Position]*cell.Cell),
 	}
-	// Iterate through each coordinate in the 2D projection.
+	// 2. Projection: Process each column to rebuild vertical stacks.
 	for x := 0; x < rg.Width; x++ {
 		for y := 0; y < rg.Height; y++ {
 			resurrectGridColumn(g, rg, x, y)
 		}
 	}
-	// Return the reconstructed 3D grid for engine consumption.
 	return g
 }
 
 // resurrectGridColumn rebuilds a single (x,y) vertical stack of cells.
 func resurrectGridColumn(g *grid.Grid, rg api.ResurrectGrid, x int, y int) {
-	var surfaceZ int
-	var isObstacle bool
-	// Extract surface height and obstruction status from the DTO.
+	// 1. Surface: Extract height and obstacle status for the topmost tile.
+	surfaceZ, isObstacle := 0, false
 	if x < len(rg.Cells) && y < len(rg.Cells[x]) {
 		surfaceZ = rg.Cells[x][y].Height
 		isObstacle = rg.Cells[x][y].Obstacle
 	}
-	// Lay dirt cells below the surface to fill the 3D volume.
+	// 2. Foundation: Create solid dirt volume up to the surface elevation.
 	for z := 0; z < surfaceZ; z++ {
 		pos := position.New(x, y, z)
 		g.Cells[pos] = cell.NewCell(cell.Dirt, pos)
 	}
-	// Create the surface cell (Ground or Obstacle) at the specified height.
+	// 3. Playable Tile: Place Ground or Obstacle cell at the target Z.
 	pos := position.New(x, y, surfaceZ)
 	cellType := cell.Ground
-	if isObstacle {
-		cellType = cell.Obstacle
-	}
+	if isObstacle { cellType = cell.Obstacle }
 	g.Cells[pos] = cell.NewCell(cellType, pos)
 }

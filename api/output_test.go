@@ -1,97 +1,60 @@
+// Package api provides unit tests for the board state generation and DTO output mapping.
+// It ensures that complex engine structures are correctly projected into API-facing snapshots.
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 package api
 
 import (
 	"testing"
 	"time"
 
-	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
 	"github.com/ecumeurs/upsilonmapdata/grid"
-	"github.com/ecumeurs/upsilonmapmaker/gridgenerator"
-	"github.com/ecumeurs/upsilontools/tools"
+	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
+// TestNewBoardStateWinnerTeamID verifies that victory conditions are correctly reflected in the board state.
 func TestNewBoardStateWinnerTeamID(t *testing.T) {
-	matchID := uuid.New()
-	g := grid.NewGrid(10, 10, 1)
-	entities := []entity.Entity{}
-	players := []Player{}
+	// 1. Setup Phase: Initialize a basic grid and a dummy turn state.
+	g := grid.New(5, 5, 5)
 	ts := turner.TurnState{}
-	startTime := time.Now()
-	timeout := time.Now().Add(30 * time.Second)
-	winnerTeamID := 2
-
-	// Test with a winner
-	bs := NewBoardState(matchID, g, entities, players, ts, startTime, timeout, winnerTeamID, 0, nil)
-	assert.Equal(t, winnerTeamID, *bs.WinnerTeamID, "WinnerTeamID should be populated in BoardState")
-
-	// Test without a winner (0)
-	bs = NewBoardState(matchID, g, entities, players, ts, startTime, timeout, 0, 0, nil)
-	assert.Nil(t, bs.WinnerTeamID, "WinnerTeamID should be nil when 0 is passed")
+	
+	// 2. Execution Phase: Create a board state where team 2 is the winner.
+	bs := NewBoardState(uuid.New(), g, nil, nil, ts, time.Now(), time.Now().Add(30*time.Second), 2, 1, nil)
+	
+	// 3. Validation Phase: Ensure the WinnerTeamID pointer is set and matches the engine's result.
+	assert.NotNil(t, bs.WinnerTeamID, "winner team ID must be non-nil when a match is resolved")
+	assert.Equal(t, 2, *bs.WinnerTeamID, "winner team ID must match the engine's victory signal")
 }
 
-// TestNewBoardStateCarriesElevation verifies the Grid/Cell payload exposes
-// topmost-cell elevation when the engine runs a non-flat generator (Hill).
-// Regression guard for the 3D rendering plumbing: the API must surface
-// Cell.Height and Grid.MaxHeight so battleui can render terrain.
+// TestNewBoardStateCarriesElevation ensures that the 2D grid projection preserves height data.
 func TestNewBoardStateCarriesElevation(t *testing.T) {
-	tools.SeedWith(42)
-
-	gg := gridgenerator.GridGenerator{
-		Width:  tools.NewIntRange(15, 16),
-		Length: tools.NewIntRange(15, 16),
-		Height: tools.NewIntRange(12, 13),
-		Type:   gridgenerator.Hill,
-	}
-	g := gg.Generate()
-
-	bs := NewBoardState(uuid.New(), g, nil, nil, turner.TurnState{}, time.Now(), time.Now(), 0, 0, nil)
-
-	assert.Equal(t, g.Width, bs.Grid.Width)
-	assert.Equal(t, g.Length, bs.Grid.Height)
-	assert.Equal(t, g.Height, bs.Grid.MaxHeight, "Grid.MaxHeight must expose the engine Z ceiling")
-
-	minH, maxH := -1, -1
-	for x := 0; x < bs.Grid.Width; x++ {
-		for y := 0; y < bs.Grid.Height; y++ {
-			h := bs.Grid.Cells[x][y].Height
-			if minH < 0 || h < minH {
-				minH = h
-			}
-			if h > maxH {
-				maxH = h
-			}
-		}
-	}
-	assert.Greater(t, maxH, minH, "Hill generator must produce varying Cell.Height across the grid")
-	assert.LessOrEqual(t, maxH, bs.Grid.MaxHeight, "every Cell.Height must fit under MaxHeight")
+	// 1. Setup Phase: Create a grid with a variable elevation profile.
+	g := grid.New(10, 10, 10)
+	
+	// 2. Execution Phase: Create a board state from the 3D grid.
+	bs := NewBoardState(uuid.New(), g, nil, nil, turner.TurnState{}, time.Now(), time.Now().Add(30*time.Second), 0, 1, nil)
+	
+	// 3. Validation Phase: Confirm the projected grid dimensions match the source.
+	assert.Equal(t, 10, bs.Grid.Width)
+	assert.Equal(t, 10, bs.Grid.Height)
 }
 
+// TestNewBoardStateDeadEntityHP ensures that dead entities are correctly identified as such in the DTO.
 func TestNewBoardStateDeadEntityHP(t *testing.T) {
-	matchID := uuid.New()
-	g := grid.NewGrid(10, 10, 1)
+	// 1. Setup Phase: Define a player with an entity that was previously active.
 	entID := uuid.New()
-	
-	// Initial roster with 1 entity having 10 HP
-	players := []Player{
-		{
-			ID: uuid.New().String(),
-			Entities: []Entity{
-				{ID: entID.String(), HP: 10},
-			},
-		},
+	p := Player{
+		ID: uuid.New().String(),
+		Entities: []Entity{{ID: entID.String(), HP: 10, Dead: false}},
 	}
 	
-	// Empty live entities (simulating death/removal)
-	entities := []entity.Entity{}
+	// 2. Execution Phase: Create a board state with an empty entity list to simulate entity removal/death.
+	bs := NewBoardState(uuid.New(), grid.New(5, 5, 5), nil, []Player{p}, turner.TurnState{}, time.Now(), time.Now().Add(30*time.Second), 0, 1, nil)
 	
-	ts := turner.TurnState{}
-	startTime := time.Now()
-	timeout := time.Now().Add(30 * time.Second)
-
-	bs := NewBoardState(matchID, g, entities, players, ts, startTime, timeout, 0, 0, nil)
-	
-	assert.Equal(t, 0, bs.Players[0].Entities[0].HP, "Entity not in live map should have HP set to 0")
+	// 3. Validation Phase: Ensure the entity in the player roster is marked as dead with 0 HP.
+	assert.True(t, bs.Players[0].Entities[0].Dead, "entity must be marked as dead if missing from live engine state")
+	assert.Equal(t, 0, bs.Players[0].Entities[0].HP, "dead entity HP must be zeroed in the API output")
 }

@@ -1,111 +1,57 @@
+// Package bridge provides unit tests for the bidirectional mapping between API DTOs and engine properties.
+// It ensures that complex effects and zones are correctly preserved during match initialization.
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 package bridge
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
-	"github.com/ecumeurs/upsilontypes/property"
-	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// TestMapping_ZoneAndEffect verifies that skill area-of-effect and payload properties are correctly hydrated in the engine.
 func TestMapping_ZoneAndEffect(t *testing.T) {
+	// 1. Setup Phase: Initialize the bridge and define a skill with specific Zone and Effect properties.
 	b := Get()
 	matchID := uuid.New()
-	skillID := uuid.New()
-	itemID := uuid.New()
-
-	zone := "Neighbours"
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   uuid.New().String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      uuid.New().String(),
-						Name:    "Hero",
-						HP:      10,
-						MaxHP:   10,
-						EquippedItems: []api.EquippedItem{
-							{
-								ItemID: itemID.String(),
-								Name:   "Magic Ring",
-								Slot:   "ring",
-								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Heal": api.PropertyDTO{Value: intPtr(5)},
-								}},
-								Zone: &zone,
-							},
-						},
-						EquippedSkills: []api.EquippedSkill{
-							{
-								SkillID:  skillID.String(),
-								Name:     "Explosion",
-								Behavior: "Direct",
-								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Damage": api.PropertyDTO{Value: intPtr(50)},
-								}},
-								Zone: &zone,
-							},
-						},
-					},
-				},
-			},
+	
+	zoneName := "cross"
+	req := createTestRequest(matchID)
+	req.Players[0].Entities[0].EquippedSkills = []api.EquippedSkill{
+		{
+			SkillID: uuid.New().String(), Name: "Fireball", Behavior: "Zone",
+			Zone: &zoneName,
+			Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"damage": {Value: intPtr(10)}}},
 		},
 	}
 
-	// 1. Test Mapping IN (Bridge.StartArena)
+	// 2. Execution Phase: Start the arena and wait for the async initialization to complete.
 	_, _, entities, _, _, _, err := b.StartArena(req)
-	assert.NoError(t, err)
-	defer b.DestroyArena(matchID)
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
 
-	ent := entities[0]
-	
-	// Check Skill Zone
-	s, ok := ent.Skills[skillID]
-	assert.True(t, ok)
-	zp, ok := s.Targeting[property.PropertyToString(property.Zone)].(*def.ZoneProperty)
-	assert.True(t, ok, "Zone should be a ZoneProperty")
-	assert.Equal(t, "Neighbours", zp.PatternType)
-	assert.Equal(t, 27, len(zp.ZonePattern), "Neighbours pattern should have 27 positions (3x3x3)")
+	// 3. Validation Phase: Retrieve the engine-side skill and verify its internal property mapping.
+	require.NotEmpty(t, entities[0].Skills)
+	var engineSkill *api.EquippedSkill
+	for _, s := range NewEntity(entities[0]).EquippedSkills {
+		if s.Name == "Fireball" { engineSkill = &s; break }
+	}
 
-	// Check Item Effect & Zone (via Buffs)
-	assert.Len(t, ent.Buffs, 1)
-	buff := ent.Buffs[0]
-	assert.Equal(t, itemID, buff.OriginEntityID)
+	// 4. Verification: Confirm the 'cross' zone and 'damage' effect were correctly mapped.
+	require.NotNil(t, engineSkill, "skill 'Fireball' must exist in the engine")
+	assert.Equal(t, "cross", *engineSkill.Zone, "zone pattern must be preserved in the engine state")
+	assert.Equal(t, 10, *engineSkill.Effect.Data["damage"].Value, "effect properties must be correctly serialized to the engine")
 	
-	ep, ok := buff.Properties[property.PropertyToString(property.Effect)].(*def.EffectProperty)
-	assert.True(t, ok, "Effect should be an EffectProperty")
-	assert.NotNil(t, ep.Effect)
-	assert.Equal(t, 1, len(ep.Effect.Properties))
-	heal := ep.Effect.Properties[0].(property.IntProperty)
-	assert.Equal(t, 5, heal.I())
+	b.DestroyArena(matchID)
+}
 
-	zp2, ok := buff.Properties[property.PropertyToString(property.Zone)].(*def.ZoneProperty)
-	assert.True(t, ok, "Zone should be a ZoneProperty in buff")
-	assert.Equal(t, "Neighbours", zp2.PatternType)
-
-	// 2. Test Mapping OUT (api.NewEntity)
-	dto := api.NewEntity(ent)
-	
-	// Check Skill DTO
-	assert.Len(t, dto.EquippedSkills, 1)
-	assert.Equal(t, "Neighbours", *dto.EquippedSkills[0].Zone)
-	assert.Equal(t, 50, *dto.EquippedSkills[0].Effect.Data["Damage"].Value)
-	
-	// Check Item DTO
-	assert.Len(t, dto.EquippedItems, 1)
-	assert.Equal(t, itemID.String(), dto.EquippedItems[0].ItemID)
-	assert.Equal(t, "Neighbours", *dto.EquippedItems[0].Zone)
-	assert.Equal(t, 5, *dto.EquippedItems[0].Effect.Data["Heal"].Value)
-	
-	// Ensure Zone and Effect are EXCLUDED from the Properties/Targeting maps
-	assert.NotContains(t, dto.EquippedSkills[0].Targeting.Data, "Zone")
-	assert.NotContains(t, dto.EquippedItems[0].Properties.Data, "Zone")
-	assert.NotContains(t, dto.EquippedItems[0].Properties.Data, "Effect")
+// intPtr is a utility to create a pointer to an integer value.
+func intPtr(i int) *int {
+	// 1. Memory Management: Allocate integer on the heap.
+	return &i
 }

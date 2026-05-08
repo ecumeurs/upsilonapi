@@ -21,6 +21,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// HTTPController bridges the engine's internal actor-based messaging with external HTTP webhooks.
+// It acts as a specialized 'proxy' controller that listens for tactical broadcasts and relays
+// them to the Laravel management layer to keep the UI in sync.
 type HTTPController struct {
 	*controller.Controller
 	CallbackURL string
@@ -29,6 +32,7 @@ type HTTPController struct {
 	PlayerIDs   []uuid.UUID // all human player IDs this controller represents
 }
 
+// webhookContext carries tactical metadata across the async Ruler state fetch.
 type webhookContext struct {
 	Action    *api.ActionFeedback
 	EventName string
@@ -36,7 +40,9 @@ type webhookContext struct {
 
 // NewHTTPController creates a single HTTPController for all human players in a match.
 // It registers under multiple player IDs via AddController, keeping one actor/queue per match.
+// This ensures that tactical events are consolidated into a single stream for delivery.
 func NewHTTPController(matchID uuid.UUID, callbackURL string, players []api.Player, playerIDs []uuid.UUID) *HTTPController {
+	// 1. Core Initialization: Initialize the base actor controller with match metadata.
 	hc := &HTTPController{
 		Controller:  controller.NewController(matchID),
 		CallbackURL: callbackURL,
@@ -45,7 +51,8 @@ func NewHTTPController(matchID uuid.UUID, callbackURL string, players []api.Play
 		PlayerIDs:   playerIDs,
 	}
 
-	// Override or add methods to handle Ruler's broadcasts
+	// 2. Event Registration: Attach handlers for all relevant tactical broadcasts from the Ruler.
+	// These handlers will trigger the webhook delivery flow (forwardToWebhook).
 	hc.AddNotificationHandler(rulermethods.ControllerNextTurn{}, hc.forwardToWebhook, nil)
 	hc.AddNotificationHandler(rulermethods.BattleStart{}, hc.BattleStart, nil)
 	hc.AddNotificationHandler(rulermethods.BattleEnd{}, hc.forwardToWebhook, nil)
@@ -55,16 +62,20 @@ func NewHTTPController(matchID uuid.UUID, callbackURL string, players []api.Play
 	hc.AddNotificationHandler(rulermethods.ControllerMoved{}, hc.forwardToWebhook, nil)
 	hc.AddNotificationHandler(rulermethods.ControllerPassed{}, hc.forwardToWebhook, nil)
 
+	// 3. State Synchronization: Register a reply handler for the board state retrieval.
 	hc.AddReplyHandler(rulermethods.GetBoardStateReply{}, hc.handleBoardStateReply, nil)
 
 	return hc
 }
 
-// BattleStart handles the BattleStart notification from the Ruler.
-// It notifies human players that the battle is ready.
+// BattleStart handles the initial setup notification from the Ruler.
+// It acknowledges the ready state for all human players and triggers the first webhook.
 func (hc *HTTPController) BattleStart(ctx actor.NotificationContext) {
+	// 1. Relay the game.started event to the external callback URL.
 	logrus.Infof("HTTPController %s: BattleStart received, notifying BattleReady for %d players", hc.MatchID, len(hc.PlayerIDs))
 	hc.forwardToWebhook(ctx)
+	
+	// 2. Acknowledge the start to the Ruler for every represented player.
 	if hc.Ruler != nil {
 		for _, pid := range hc.PlayerIDs {
 			hc.Ruler.NotifyActor(message.Create(nil, rulermethods.ControllerBattleReady{

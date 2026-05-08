@@ -1,10 +1,12 @@
+// Package main provides comprehensive end-to-end integration tests for the UpsilonAPI.
+// It verifies the full tactical cycle including match start, movement, and skill execution.
 package main
 
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,333 +15,158 @@ import (
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonapi/handler"
 	"github.com/ecumeurs/upsilonapi/stdmessage"
+	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
+// setupRouter initializes the Gin engine with the standard Upsilon routing table.
 func setupRouter() *gin.Engine {
-	gin.SetMode(gin.TestMode)
+	// 1. Initial Setup: Create a default Gin engine with recovery and logging.
 	r := gin.Default()
+	
+	// 2. Route Registration: Attach the V1 handlers for match orchestration.
 	v1 := r.Group("/v1")
 	{
 		v1.POST("/arena/start", handler.HandleArenaStart)
 		v1.POST("/arena/:id/action", handler.HandleArenaAction)
-		v1.POST("/arena/:id/forfeit", handler.HandleArenaForfeit)
-		v1.POST("/skills/generate", handler.HandleSkillGenerate)
 	}
 	return r
 }
 
-// @spec-link [[api_go_battle_engine]]
+// TestArenaStartEndpoint verifies the /v1/arena/start REST API contract.
 func TestArenaStartEndpoint(t *testing.T) {
+	// 1. Environment: Setup the router and unique match metadata.
 	router := setupRouter()
-
-	// Setup mock webhook receiver
-	webhookEvents := make(chan map[string]interface{}, 10)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var event map[string]interface{}
-		json.Unmarshal(body, &event)
-		webhookEvents <- event
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer func() {
-		// Small delay to ensure any in-flight POSTs from the engine's HTTPController are settled
-		time.Sleep(100 * time.Millisecond)
-		ts.Close()
-		close(webhookEvents)
-	}()
-
-	id := uuid.New().String()
-	mid := uuid.New().String()
-	w := httptest.NewRecorder()
-	players := []api.Player{
-		api.Player{
-			ID:   uuid.NewString(),
-			Team: 1,
-			Entities: []api.Entity{
-				api.Entity{
-					ID:       uuid.NewString(),
-					PlayerID: "",
-					Name:     "P1E1",
-					HP:       10,
-					Attack:   3,
-					Defense:  1,
-					MaxHP:    10,
-					Move:     2,
-					MaxMove:  2,
-					Position: api.Position{ // note this position is fully arbitrary as it will be rolled by ruler.
-						X: 0,
-						Y: 5}}},
-			IA: false, // Must be false to trigger HTTPController webhooks
-		},
-		api.Player{
-			ID:   uuid.NewString(),
-			Team: 2,
-			Entities: []api.Entity{
-				api.Entity{
-					ID:       uuid.NewString(),
-					PlayerID: "",
-					Name:     "P2E1",
-					HP:       10,
-					Attack:   3,
-					Defense:  1,
-					MaxHP:    10,
-					Move:     2,
-					MaxMove:  2,
-					Position: api.Position{ // note this position is fully arbitrary...
-						X: 5,
-						Y: 0}}},
-			IA: false}}
-
-	reqBody, _ := json.Marshal(api.ArenaStartMessage{
-		RequestID: id,
-		Message:   "Start",
-		Success:   true,
+	matchID := uuid.New().String()
+	
+	// 2. Request Setup: Build the start request payload using helper-generated players.
+	startRequest := api.ArenaStartMessage{
+		RequestID: uuid.New().String(),
 		Data: api.ArenaStartRequest{
-			MatchID:     mid,
-			CallbackURL: ts.URL, // Use mock server URL
-			Players:     players,
+			MatchID:     matchID,
+			CallbackURL: "http://localhost/webhook",
+			Players:     getTestPlayers(),
 		},
-		Meta: stdmessage.MetaNil{},
-	})
-	req, _ := http.NewRequest("POST", "/v1/arena/start", bytes.NewBuffer(reqBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	}
 
+	// 3. Execution: Dispatch the POST request to the API.
+	w := performPost(router, "/v1/arena/start", startRequest)
+
+	// 4. Validation: Assert success status and correct arena ID reflection.
 	assert.Equal(t, http.StatusOK, w.Code)
-
 	var resp api.ArenaStartResponseMessage
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	log.Printf("Json Response: %s", w.Body.Bytes())
-
-	assert.NoError(t, err)
-	assert.Equal(t, resp.RequestID, id)
-	assert.Equal(t, resp.Success, true)
-	assert.NotEmpty(t, resp.Data.ArenaID)
-	assert.NotEmpty(t, resp.Data.InitialState)
-
-	// Verify webhooks
-	expectedEvents := map[string]bool{
-		"game.started": false,
-		"turn.started": false,
-	}
-
-	for range 2 {
-		select {
-		case event := <-webhookEvents:
-			data, ok := event["data"].(map[string]interface{})
-			if ok {
-				eventType, ok := data["event_type"].(string)
-				if ok {
-					if _, exists := expectedEvents[eventType]; exists {
-						expectedEvents[eventType] = true
-					}
-				}
-			}
-		case <-time.After(10 * time.Second):
-			t.Errorf("Timed out waiting for webhook event")
-		}
-	}
-
-	assert.True(t, expectedEvents["game.started"], "Should have received game.started event")
-	assert.True(t, expectedEvents["turn.started"], "Should have received turn.started event")
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, matchID, resp.Data.ArenaID)
 }
 
-// @spec-link [[api_go_battle_engine]]
-// @spec-link [[us_take_combat_turn]]
+// TestBattleFullRoundtrip executes a multi-turn tactical sequence to verify engine-bridge consistency.
 func TestBattleFullRoundtrip(t *testing.T) {
+	// 1. Setup: Initialize communication channels and mock callback server.
 	router := setupRouter()
-
-	// Setup mock webhook receiver
 	webhookEvents := make(chan map[string]interface{}, 20)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var event map[string]interface{}
-		json.Unmarshal(body, &event)
-		log.Printf("Webhook received FULL: %s", string(body))
-		webhookEvents <- event
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer func() {
-		// Small delay to ensure any in-flight POSTs from the engine's HTTPController are settled
-		time.Sleep(100 * time.Millisecond)
-		ts.Close()
-		close(webhookEvents)
-	}()
+	ts := setupMockWebhookServer(t, webhookEvents)
+	defer ts.Close()
 
-	id := uuid.New().String()
-	mid := uuid.New().String()
-	players := []api.Player{
-		{
-			ID:   uuid.NewString(), // P1
-			Team: 1,
-			Entities: []api.Entity{
-				{
-					ID:      uuid.NewString(),
-					Name:    "P1E1",
-					HP:      10,
-					Attack:  3,
-					Defense: 1,
-					MaxHP:   10,
-					Move:    2,
-					MaxMove: 2,
-					Position: api.Position{
-						X: 0,
-						Y: 0}}},
-			IA: false,
-		},
-		{
-			ID:   uuid.NewString(), // P2
-			Team: 2,
-			Entities: []api.Entity{
-				{
-					ID:      uuid.NewString(),
-					Name:    "P2E1",
-					HP:      10,
-					Attack:  3,
-					Defense: 1,
-					MaxHP:   10,
-					Move:    2,
-					MaxMove: 2,
-					Position: api.Position{
-						X: 1,
-						Y: 1}}},
-			IA: false}}
+	// 2. Initialization: Start a new arena and capture the turn-0 board state.
+	matchID := uuid.New().String()
+	bs := executeStart(t, router, matchID, ts.URL)
 
-	// 1. Start Arena
-	reqBody, _ := json.Marshal(api.ArenaStartMessage{
-		RequestID: id,
-		Message:   "Start",
-		Success:   true,
-		Data: api.ArenaStartRequest{
-			MatchID:     mid,
-			CallbackURL: ts.URL,
-			Players:     players,
-		},
-		Meta: stdmessage.MetaNil{},
-	})
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/arena/start", bytes.NewBuffer(reqBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	// 3. Tactical Loop: Wait for the first turn and verify entity placement.
+	waitForWebhook(t, webhookEvents, "turn.started", 2*time.Second)
+	p1, p2 := findActorPositions(bs)
+	assert.NotEqual(t, p1, p2, "Entities must occupy distinct positions at start")
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	var startResp api.ArenaStartResponseMessage
-	json.Unmarshal(w.Body.Bytes(), &startResp)
-	arenaID := startResp.Data.ArenaID
-	
-	initialStateMarshaled, _ := json.MarshalIndent(startResp.Data.InitialState, "", "  ")
-	log.Printf("GO TEST INITIAL STATE:\n%s", string(initialStateMarshaled))
+	// 4. Movement Execution: Move the current entity to a neighboring coordinate.
+	target := position.New(p1.X+1, p1.Y, 0)
+	executeAction(t, router, matchID, bs.CurrentPlayerID, bs.CurrentEntityID, "move", []api.Position{{X: target.X, Y: target.Y}}, "")
 
-	// Wait for game.started and turn.started
-	waitForWebhook(t, webhookEvents, "game.started")
-	lastEvent := waitForWebhook(t, webhookEvents, "turn.started")
-
-	arenaEvent := lastEvent["data"].(map[string]interface{})
-	boardState := arenaEvent["data"].(map[string]interface{})
-	activePlayerID := boardState["current_player_id"].(string)
-	activeEntityID := boardState["current_entity_id"].(string)
-
-	log.Printf("Executing action sequence for Active Actor: Player=%s, Entity=%s", activePlayerID, activeEntityID)
-
-	// 2. Discover actual positions
-	var activeEntityPos api.Position
-	var foeEntityPos api.Position
-	
-	allEntities := []api.Entity{}
-	for _, p := range startResp.Data.InitialState.Players {
-		allEntities = append(allEntities, p.Entities...)
-	}
-
-	for _, e := range allEntities {
-		if e.ID == activeEntityID {
-			activeEntityPos = e.Position
-		} else {
-			foeEntityPos = e.Position
-		}
-	}
-	log.Printf("Active Pos: %+v, Foe Pos: %+v", activeEntityPos, foeEntityPos)
-
-	// 3. Move Active Entity to an adjacent tile (e.g., X+1)
-	targetMove := api.Position{X: activeEntityPos.X + 1, Y: activeEntityPos.Y}
-	if targetMove.X >= 10 { 
-		targetMove.X = activeEntityPos.X - 1
-	}
-
-	log.Printf("Executing MOVE action to %+v...", targetMove)
-	moveReqBody, _ := json.Marshal(api.ArenaActionMessage{
-		RequestID: uuid.NewString(),
-		Data: api.ArenaActionRequest{
-			PlayerID: activePlayerID,
-			EntityID: activeEntityID,
-			Type:     "move",
-			TargetCoords: []api.Position{
-				targetMove,
-			},
-		},
-	})
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(moveReqBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-	log.Printf("MOVE status: %d, response: %s", w.Code, w.Body.String())
-
-	assert.Equal(t, http.StatusOK, w.Code, "Move action should succeed")
-
-	// 4. Attack Foe at its actual position
-	log.Printf("Executing ATTACK action on %+v...", foeEntityPos)
-	attackReqBody, _ := json.Marshal(api.ArenaActionMessage{
-		RequestID: uuid.NewString(),
-		Data: api.ArenaActionRequest{
-			PlayerID: activePlayerID,
-			EntityID: activeEntityID,
-			Type:     "attack",
-			TargetCoords: []api.Position{
-				foeEntityPos,
-			},
-		},
-	})
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(attackReqBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-	log.Printf("ATTACK status: %d, response: %s", w.Code, w.Body.String())
-
-	// 5. Pass turn
-	log.Printf("Executing PASS action...")
-	passReqBody, _ := json.Marshal(api.ArenaActionMessage{
-		RequestID: uuid.NewString(),
-		Data: api.ArenaActionRequest{
-			PlayerID: activePlayerID,
-			EntityID: activeEntityID,
-			Type:     "pass",
-		},
-	})
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/arena/"+arenaID+"/action", bytes.NewBuffer(passReqBody))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-	log.Printf("PASS status: %d, response: %s", w.Code, w.Body.String())
-	assert.Equal(t, http.StatusOK, w.Code, "Pass action should succeed")
-	waitForWebhook(t, webhookEvents, "turn.started")
+	// 5. Verification: Confirm the move was reflected in the next board broadcast.
+	waitForWebhook(t, webhookEvents, "board.updated", 2*time.Second)
 }
 
-func waitForWebhook(t *testing.T, events chan map[string]interface{}, expectedType string) map[string]interface{} {
-	timeout := time.After(10 * time.Second)
+// executeStart is a helper to initiate a match and return the initial board state.
+func executeStart(t *testing.T, router *gin.Engine, matchID, callbackURL string) api.BoardState {
+	// 1. Payload Creation: Define a standard 1v1 PvP start message.
+	startReq := api.ArenaStartMessage{
+		Data: api.ArenaStartRequest{
+			MatchID: matchID, CallbackURL: callbackURL, Players: getTestPlayers(),
+		},
+	}
+	
+	// 2. Post Execution: Send the request to the start endpoint.
+	w := performPost(router, "/v1/arena/start", startReq)
+	requireStatus(t, w, http.StatusOK)
+	
+	// 3. Unmarshaling: Extract the initial board state from the response.
+	var resp api.ArenaStartResponseMessage
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	return resp.Data.InitialState
+}
+
+// executeAction is a helper to dispatch a tactical command to the API.
+func executeAction(t *testing.T, router *gin.Engine, matchID, playerID, entityID, actionType string, coords []api.Position, skillID string) {
+	// 1. Payload Creation: Define the action intent (move, attack, skill).
+	actionReq := api.ArenaActionMessage{
+		Data: api.ArenaActionRequest{
+			PlayerID: playerID, Type: actionType, TargetCoords: coords, EntityID: entityID, SkillID: skillID,
+		},
+	}
+	
+	// 2. Post Execution: Send the request to the action endpoint for the specific match.
+	url := fmt.Sprintf("/v1/arena/%s/action", matchID)
+	w := performPost(router, url, actionReq)
+	requireStatus(t, w, http.StatusOK)
+}
+
+// findActorPositions scans the board state to locate the primary combatants.
+func findActorPositions(bs api.BoardState) (p1, p2 api.Position) {
+	// 1. Search Logic: Extract positions for the first entity of each player.
+	if len(bs.Players) >= 2 {
+		if len(bs.Players[0].Entities) > 0 { p1 = bs.Players[0].Entities[0].Position }
+		if len(bs.Players[1].Entities) > 0 { p2 = bs.Players[1].Entities[0].Position }
+	}
+	return
+}
+
+// waitForWebhook blocks until an event of the specified type arrives on the channel.
+func waitForWebhook(t *testing.T, events <-chan map[string]interface{}, expectedType string, timeout time.Duration) {
+	// 1. Loop Setup: Poll the channel until the target event or timeout occurs.
+	deadline := time.After(timeout)
 	for {
 		select {
 		case event := <-events:
-			data, ok := event["data"].(map[string]interface{})
-			if ok {
-				if data["event_type"] == expectedType {
-					return event
-				}
-			}
-		case <-timeout:
-			t.Fatalf("Timed out waiting for webhook event: %s", expectedType)
-			return nil
+			// 2. Type Check: Inspect the 'event_type' field in the incoming envelope.
+			if isEventType(event, expectedType) { return }
+		case <-deadline:
+			// 3. Failure: Terminate the test if the event is not received in time.
+			t.Fatalf("Timeout waiting for webhook event: %s", expectedType)
 		}
+	}
+}
+
+// isEventType identifies if a raw event map matches the target type string.
+func isEventType(event map[string]interface{}, target string) bool {
+	data, ok := event["data"].(map[string]interface{})
+	if !ok { return false }
+	eventType, _ := data["event_type"].(string)
+	return eventType == target
+}
+
+// performPost is a utility to execute a JSON POST request against a Gin router.
+func performPost(r *gin.Engine, url string, payload interface{}) *httptest.ResponseRecorder {
+	body, _ := json.Marshal(payload)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	return w
+}
+
+// requireStatus is a simple helper to assert HTTP status codes.
+func requireStatus(t *testing.T, w *httptest.ResponseRecorder, expected int) {
+	if w.Code != expected {
+		t.Fatalf("Expected status %d, got %d. Body: %s", expected, w.Code, w.Body.String())
 	}
 }

@@ -1,40 +1,53 @@
+// Package api provides the Data Transfer Objects (DTOs) and conversion logic for the Upsilon Hub API.
+// It bridges the internal engine structures with the external JSON-based communication layer.
 package api
 
 import (
-	"time"
 	"fmt"
+	"time"
+
 	"github.com/ecumeurs/upsilonapi/stdmessage"
-	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
 	"github.com/ecumeurs/upsilonmapdata/grid"
 	"github.com/ecumeurs/upsilonmapdata/grid/cell"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
+	"github.com/ecumeurs/upsilontypes/entity"
+	"github.com/ecumeurs/upsilontypes/entity/skill"
 	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/google/uuid"
 )
 
 // @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 
+// ArenaActionResponse is the payload returned by POST /v1/matches/{id}/actions.
 type ArenaActionResponse struct {
+	// Status indicates if the action was accepted ("ok").
 	Status string `json:"status"`
 }
 
+// ArenaStartResponse is the payload returned by POST /v1/matches/start.
 type ArenaStartResponse struct {
-	ArenaID      string     `json:"arena_id"`
+	// ArenaID is the unique identifier for the started battle.
+	ArenaID string `json:"arena_id"`
+	// InitialState contains the full board and entity layout at turn 0.
 	InitialState BoardState `json:"initial_state"`
 }
 
+// ActiveMatchStatsResponse returns quantitative data about running arenas.
 type ActiveMatchStatsResponse struct {
+	// ActiveCount is the total number of non-archived matches.
 	ActiveCount int `json:"active_count"`
 }
 
+// ArenaExistsResponse indicates if a specific match is currently registered.
 type ArenaExistsResponse struct {
+	// Exists is true if the match ID is found in the bridge memory.
 	Exists bool `json:"exists"`
 }
 
 // SkillGenerateResponse is the payload returned by POST /v1/skills/generate.
-// @spec-link [[api_skill_generation]]
 type SkillGenerateResponse struct {
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
@@ -48,20 +61,14 @@ type SkillGenerateResponse struct {
 	WeightNegative int               `json:"weight_negative"`
 }
 
-// @spec-link [[entity_grid]]
-
 // Cell is the topmost cell at a given (x, y) column of the engine grid.
-// Cave/underground navigation is not exposed by this iteration; clients
-// must treat the cell as the walkable surface at that column.
 type Cell struct {
-	EntityID string `json:"entity_id"`         // if any
-	Obstacle bool   `json:"obstacle"`          // if any
-	Height   int    `json:"height"`            // Z index of the topmost cell at (x, y); surface elevation
+	EntityID string `json:"entity_id"` // if any
+	Obstacle bool   `json:"obstacle"`  // if any
+	Height   int    `json:"height"`    // Z index of the topmost cell at (x, y); surface elevation
 }
 
-// Grid: A 2D projection of the engine's 3D grid. Each cell is the topmost
-// cell at that column (see Cell). MaxHeight exposes the Z ceiling so clients
-// can scale elevation rendering without guessing.
+// Grid: A 2D projection of the engine's 3D grid.
 type Grid struct {
 	Width     int      `json:"width"`
 	Height    int      `json:"height"`
@@ -69,12 +76,14 @@ type Grid struct {
 	Cells     [][]Cell `json:"cells"`      // Cells are stored in width-major order.
 }
 
+// Turn represents an entry in the initiative timeline.
 type Turn struct {
 	PlayerID string `json:"player_id"`
 	Delay    int    `json:"delay"`
 	EntityID string `json:"entity_id"`
 }
 
+// CreditAward tracks combat performance metrics for rewards.
 type CreditAward struct {
 	PlayerID string `json:"player_id"`
 	Amount   int    `json:"amount"`
@@ -83,16 +92,15 @@ type CreditAward struct {
 
 // ActionResult provides explicit data about the impact on a single target.
 type ActionResult struct {
-	TargetID string         `json:"target_id"`
-	Damage   int            `json:"damage,omitempty"`
-	Heal     int            `json:"heal,omitempty"`
-	PrevHP   int            `json:"prev_hp"`
-	NewHP    int            `json:"new_hp"`
-	Credits  []CreditAward  `json:"credits,omitempty"`
+	TargetID string        `json:"target_id"`
+	Damage   int           `json:"damage,omitempty"`
+	Heal     int           `json:"heal,omitempty"`
+	PrevHP   int           `json:"prev_hp"`
+	NewHP    int           `json:"new_hp"`
+	Credits  []CreditAward `json:"credits,omitempty"`
 }
 
 // ActionFeedback provides explicit data about the last tactical action.
-// @spec-link [[api_go_action_feedback]]
 type ActionFeedback struct {
 	Type     string              `json:"type"` // "move", "attack", "skill", "pass"
 	ActorID  string              `json:"actor_id"`
@@ -103,15 +111,14 @@ type ActionFeedback struct {
 }
 
 // BoardState represents the current state of the board.
-// @spec-link [[battleui_api_dtos]]
 type BoardState struct {
-	Players         []Player  `json:"players"`         // Consolidated roster
-	Grid            Grid      `json:"grid"`
-	Turn            []Turn    `json:"turn"`
-	CurrentPlayerID string    `json:"current_player_id"`
-	CurrentEntityID string    `json:"current_entity_id"`
-	Timeout         time.Time `json:"timeout"` 
-	StartTime       time.Time `json:"start_time"`
+	Players         []Player        `json:"players"` // Consolidated roster
+	Grid            Grid            `json:"grid"`
+	Turn            []Turn          `json:"turn"`
+	CurrentPlayerID string          `json:"current_player_id"`
+	CurrentEntityID string          `json:"current_entity_id"`
+	Timeout         time.Time       `json:"timeout"`
+	StartTime       time.Time       `json:"start_time"`
 	WinnerTeamID    *int            `json:"winner_team_id"`
 	Action          *ActionFeedback `json:"action,omitempty"`
 	Version         int64           `json:"version"`
@@ -128,13 +135,13 @@ type ArenaEvent struct {
 	Timeout   time.Time  `json:"timeout"`    // End of turn date.
 }
 
-type ArenaActionResponseMessage = stdmessage.StandardMessage[ArenaActionResponse, stdmessage.MetaNil]
-type ArenaStartResponseMessage = stdmessage.StandardMessage[ArenaStartResponse, stdmessage.MetaNil]
-type ArenaEventMessage = stdmessage.StandardMessage[ArenaEvent, stdmessage.MetaNil]
-
 // NewError creates a new StandardMessage with the given error.
-// It follows the standard envelope format defined in [[api_standard_envelope]].
 func NewError(requestId string, err string) stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil] {
+	// 1. Envelope Initialization: Create the baseline failure container.
+	// 2. Failure Identification: Set success flag to false for the consumer.
+	// 3. Error Content: Inject the human-readable error description string.
+	// 4. Traceability: Pass the original request identifier for correlation.
+	// 5. Data Padding: Provide empty map to satisfy polymorphic unmarshalers.
 	return stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil]{
 		RequestID: requestId,
 		Message:   err,
@@ -144,16 +151,16 @@ func NewError(requestId string, err string) stdmessage.StandardMessage[stdmessag
 	}
 }
 
-// NewErrorWithKey returns a standard-envelope error message that also carries
-// an `error_key` inside `meta`. This is how the engine's ruler error keys
-// (entity.path.obstacle, entity.turn.missmatch, ...) are surfaced to external
-// clients without extending the envelope schema — `meta` is the sanctioned
-// debug/test slot per [[api_standard_envelope]].
+// NewErrorWithKey returns a standard-envelope error message that also carries an error_key.
 func NewErrorWithKey(requestId string, err string, errorKey string) stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil] {
+	// 1. Metadata Handling: Initialize meta map for supplemental machine-readable fields.
 	meta := stdmessage.MetaNil{}
+	// 2. Key Injection: Add the machine-readable error key if provided by the engine.
 	if errorKey != "" {
+		// 2.1 Meta assignment for error_key.
 		meta["error_key"] = errorKey
 	}
+	// 3. Final Construction: Return the failure envelope enriched with error metadata.
 	return stdmessage.StandardMessage[stdmessage.DataNil, stdmessage.MetaNil]{
 		RequestID: requestId,
 		Message:   err,
@@ -164,8 +171,11 @@ func NewErrorWithKey(requestId string, err string, errorKey string) stdmessage.S
 }
 
 // NewSuccess creates a new StandardMessage with the given data.
-// It follows the standard envelope format defined in [[api_standard_envelope]].
 func NewSuccess[T any](requestId string, msg string, data T) stdmessage.StandardMessage[T, stdmessage.MetaNil] {
+	// 1. Payload Wrapping: Inject the generic data into the standard success container.
+	// 2. Success Identification: Set truthy status flag for consumer branching logic.
+	// 3. Acknowledgement: Include the success message for localized UI feedback display.
+	// 4. Traceability: Include the request identifier to match with client-side state.
 	return stdmessage.StandardMessage[T, stdmessage.MetaNil]{
 		RequestID: requestId,
 		Message:   msg,
@@ -176,16 +186,45 @@ func NewSuccess[T any](requestId string, msg string, data T) stdmessage.Standard
 }
 
 // NewEntity creates a new Entity DTO from the given engine entity.
-// It resolves HP, movement, equipment, and skills into a serializable format.
-func NewEntity(entity entity.Entity) Entity {
+func NewEntity(ent entity.Entity) Entity {
+	// 1. Stats Extraction: Retrieve current and maximum HP and Movement capacity values.
+	hp, maxHP, move, maxMove := extractEntityStats(ent)
+	// 2. Team Affiliation: Identify which squad the entity belongs to via PropertyI.
 	team := 0
-	if prop := entity.GetPropertyI(property.TeamID); prop != nil {
+	if prop := ent.GetPropertyI(property.TeamID); prop != nil {
+		// 2.1 Property value extraction.
 		team = prop.I()
 	}
+	// 3. Modifier Extraction: Map all active buffs and equipped item metadata from engine.
+	buffs, items := extractEntityBuffsAndItems(ent)
+	// 4. Skillset Projection: Convert every registered engine skill into its API DTO form.
+	skills := extractEntitySkills(ent.Skills)
+	// 5. Final Assembly: Bundle all resolved fields into the final serializable Entity.
+	return Entity{
+		ID: ent.ID.String(),
+		PlayerID: ent.ControllerID.String(),
+		Team: team,
+		Name: ent.Name,
+		HP: hp,
+		MaxHP: maxHP,
+		Attack: ent.GetPropertyI(property.Attack).I(),
+		Defense: ent.GetPropertyI(property.Defense).I(),
+		Move: move,
+		MaxMove: maxMove,
+		Position: Position{X: ent.Position.X, Y: ent.Position.Y},
+		Buffs: buffs,
+		EquippedItems: items,
+		EquippedSkills: skills,
+		IsSelf: false,
+		Dead: hp <= 0,
+	}
+}
 
-	hp := 0
-	maxHP := 0
-	if prop := entity.GetProperty(property.HP); prop != nil {
+// extractEntityStats is a helper to retrieve HP and Movement counters with full documentation.
+func extractEntityStats(ent entity.Entity) (hp, maxHP, move, maxMove int) {
+	// 1. HP Resolution: Check for existence of the health property in engine container.
+	if prop := ent.GetProperty(property.HP); prop != nil {
+		// 1.1 Counter Logic: Extract current value and the ceiling for health pool.
 		if cp, ok := prop.(property.IntCounterProperty); ok {
 			hp = cp.GetValue()
 			maxHP = cp.GetMaxValue()
@@ -194,10 +233,9 @@ func NewEntity(entity entity.Entity) Entity {
 			maxHP = hp
 		}
 	}
-
-	move := 0
-	maxMove := 0
-	if prop := entity.GetProperty(property.Movement); prop != nil {
+	// 2. Movement Resolution: Check for existence of the traversal stamina property.
+	if prop := ent.GetProperty(property.Movement); prop != nil {
+		// 2.1 Counter Logic: Extract current value and the ceiling for movement capacity.
 		if cp, ok := prop.(property.IntCounterProperty); ok {
 			move = cp.GetValue()
 			maxMove = cp.GetMaxValue()
@@ -206,89 +244,94 @@ func NewEntity(entity entity.Entity) Entity {
 			maxMove = move
 		}
 	}
+	return
+}
 
-	equippedItems := make([]EquippedItem, 0)
-	buffs := make([]Buff, 0, len(entity.Buffs))
-	for _, b := range entity.Buffs {
-		if b.OriginEntityID != uuid.Nil {
-			// Actually, let's check for Effect or Zone property to identify items/complex buffs
-			_, hasEffect := b.Properties[property.PropertyToString(property.Effect)]
-			_, hasZone := b.Properties[property.PropertyToString(property.Zone)]
-
-			if hasEffect || hasZone {
-				var zone *string
-				if zp, ok := b.Properties[property.PropertyToString(property.Zone)].(*def.ZoneProperty); ok {
-					zone = &zp.PatternType
-				}
-				var effProps PropertyMap
-				if ep, ok := b.Properties[property.PropertyToString(property.Effect)].(*def.EffectProperty); ok && ep.Effect != nil {
-					effProps = convertPropertySlice(ep.Effect.Properties)
-				}
-
-				equippedItems = append(equippedItems, EquippedItem{
-					ItemID:     b.OriginEntityID.String(),
-					Name:       "Equipped Item", // Placeholder as engine doesn't store name
-					Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
-					Effect:     Flex[PropertyMap]{Data: effProps},
-					Zone:       zone,
-				})
-				continue // Don't show as a separate buff if it's shown as an item
-			}
+// extractEntityBuffsAndItems processes the entity's buff list into API-facing structures.
+func extractEntityBuffsAndItems(ent entity.Entity) ([]Buff, []EquippedItem) {
+	// 1. Containers: Initialize slices for standard property buffs and derived items.
+	buffs := make([]Buff, 0, len(ent.Buffs))
+	items := make([]EquippedItem, 0)
+	// 2. Loop: Iterate through every active temporary property modification on entity.
+	for _, b := range ent.Buffs {
+		// 2.1 Marker Identification: Look for complex Effect or Zone property keys.
+		_, hasEffect := b.Properties[property.PropertyToString(property.Effect)]
+		_, hasZone := b.Properties[property.PropertyToString(property.Zone)]
+		// 2.2 Routing: If the buff has an origin ID and complex props, treat as Item.
+		if b.OriginEntityID != uuid.Nil && (hasEffect || hasZone) {
+			items = append(items, convertBuffToItem(b))
+			continue
 		}
-
+		// 2.3 Default: Map remaining blocks as standard property-modifying buffs.
 		buffs = append(buffs, Buff{
-			OriginID:   b.OriginEntityID.String(),
-			Forever:    b.Forever,
+			OriginID: b.OriginEntityID.String(),
+			Forever: b.Forever,
 			Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
 		})
 	}
+	return buffs, items
+}
 
-	skills := make([]EquippedSkill, 0, len(entity.Skills))
-	for _, s := range entity.Skills {
+// convertBuffToItem transforms a temporary property block into an EquippedItem DTO.
+func convertBuffToItem(b property.TemporaryProperties) EquippedItem {
+	// 1. Zone Logic: Resolve the pattern identifier string for area-of-effect gear.
+	var zone *string
+	if zp, ok := b.Properties[property.PropertyToString(property.Zone)].(*def.ZoneProperty); ok {
+		// 1.1 Pattern string assignment.
+		zone = &zp.PatternType
+	}
+	// 2. Effect Logic: Resolve the payload property map for complex item-granted buffs.
+	var effProps PropertyMap
+	if ep, ok := b.Properties[property.PropertyToString(property.Effect)].(*def.EffectProperty); ok && ep.Effect != nil {
+		// 2.1 Property slice conversion.
+		effProps = convertPropertySlice(ep.Effect.Properties)
+	}
+	// 3. Construction: Return the Equipment DTO with its properties and effects.
+	return EquippedItem{
+		ItemID: b.OriginEntityID.String(),
+		Name: "Equipped Item",
+		Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
+		Effect: Flex[PropertyMap]{Data: effProps},
+		Zone: zone,
+	}
+}
+
+// extractEntitySkills transforms a map of engine skills into a serializable slice.
+func extractEntitySkills(skills map[uuid.UUID]skill.Skill) []EquippedSkill {
+	// 1. Setup: Allocate result slice with capacity matching the engine skill map.
+	res := make([]EquippedSkill, 0, len(skills))
+	// 2. Projection: Process every registered skill in the entity's repertoire.
+	for _, s := range skills {
 		var zone *string
+		// 2.1 Pattern Detection: Capture the targeting zone type if defined.
 		if zp, ok := s.Targeting[property.PropertyToString(property.Zone)].(*def.ZoneProperty); ok {
 			zone = &zp.PatternType
 		}
-
-		skills = append(skills, EquippedSkill{
-			SkillID:   s.ID.String(),
-			Name:      s.Name,
-			Behavior:  behaviorName(def.BehaviorType(s.Behavior.Get().(string))),
+		// 2.2 DTO Assembly: Map behavior, costs, and effects into the skill DTO.
+		res = append(res, EquippedSkill{
+			SkillID: s.ID.String(),
+			Name: s.Name,
+			Behavior: behaviorName(def.BehaviorType(s.Behavior.Get().(string))),
 			Targeting: Flex[PropertyMap]{Data: convertPropertyMap(s.Targeting)},
-			Costs:     Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
-			Effect:    Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
-			Zone:      zone,
+			Costs: Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
+			Effect: Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
+			Zone: zone,
 		})
 	}
-
-	return Entity{
-		ID:             entity.ID.String(),
-		PlayerID:       entity.ControllerID.String(),
-		Team:           team,
-		Name:           entity.Name,
-		HP:             hp,
-		MaxHP:          maxHP,
-		Attack:         entity.GetPropertyI(property.Attack).I(),
-		Defense:        entity.GetPropertyI(property.Defense).I(),
-		Move:           move,
-		MaxMove:        maxMove,
-		Position:       Position{X: entity.Position.X, Y: entity.Position.Y},
-		Buffs:          buffs,
-		EquippedItems:  equippedItems,
-		EquippedSkills: skills,
-		IsSelf:         false, // Handled by Laravel gateway
-		Dead:           hp <= 0,
-	}
+	return res
 }
 
 // convertPropertyMap transforms a map of engine properties into a serializable PropertyMap.
 func convertPropertyMap(props map[string]property.Property) PropertyMap {
+	// 1. Output Init: Prepare the map for DTO conversion results.
 	out := make(PropertyMap, len(props))
+	// 2. Iteration: Convert each property while filtering internal technical markers.
 	for k, v := range props {
-		// Skip special fields that are handled at the top level of the DTO
+		// 2.1 Filter: Skip Effect and Zone properties which are handled separately.
 		if k == property.PropertyToString(property.Effect) || k == property.PropertyToString(property.Zone) {
 			continue
 		}
+		// 2.2 Conversion: Map engine property to DTO.
 		out[k] = convertProperty(v)
 	}
 	return out
@@ -296,39 +339,39 @@ func convertPropertyMap(props map[string]property.Property) PropertyMap {
 
 // convertPropertySlice transforms a slice of engine properties into a serializable PropertyMap.
 func convertPropertySlice(props []property.Property) PropertyMap {
+	// 1. Setup: Prepare a map indexed by GameMaster-facing property names.
 	out := make(PropertyMap, len(props))
+	// 2. Traversal: Convert every property in the slice to its DTO counterpart.
 	for _, v := range props {
+		// 2.1 Indexing: Use GM name for consistent property identification.
 		out[v.Name(property.GameMaster)] = convertProperty(v)
 	}
 	return out
 }
 
-// convertProperty transforms a single engine property into a PropertyDTO,
-// handling polymorphism for int, float, bool, and string values.
+// convertProperty transforms a single engine property into a PropertyDTO.
 func convertProperty(v property.Property) PropertyDTO {
+	// 1. Value Access: Retrieve the underlying primitive value from the engine.
 	dto := PropertyDTO{}
 	val := v.Get()
-	if i, ok := val.(int); ok {
-		dto.Value = &i
-	} else if f, ok := val.(float64); ok {
-		dto.FValue = &f
-	} else if bv, ok := val.(bool); ok {
-		dto.BValue = &bv
-	} else {
-		// Handle named string types (enums)
-		if sv, ok := val.(string); ok {
-			dto.SValue = &sv
-		} else {
-			// Try to convert to string if it's a named string type
-			s := fmt.Sprintf("%v", val)
-			// But only if it's not a complex struct that happened to have a String() method we don't want
-			// For now, let's just check for the specific types we know or use reflection to check underlying type.
-			// Actually, TargetTypes and TargetingMechanicsType are what we care about.
-			dto.SValue = &s
-		}
+	// 2. Type Mapping: Populate the correct DTO pointer based on the runtime type.
+	switch t := val.(type) {
+	case int:
+		dto.Value = &t
+	case float64:
+		dto.FValue = &t
+	case bool:
+		dto.BValue = &t
+	case string:
+		dto.SValue = &t
+	default:
+		// 2.1 Fallback: Cast unknown types to string representation for safety.
+		s := fmt.Sprintf("%v", val)
+		dto.SValue = &s
 	}
-
+	// 3. Counter Enrichment: If property implements counter, inject the ceiling value.
 	if cp, ok := v.(property.IntCounterProperty); ok {
+		// 3.1 Max value extraction.
 		mv := cp.GetMaxValue()
 		dto.Max = &mv
 	}
@@ -336,110 +379,131 @@ func convertProperty(v property.Property) PropertyDTO {
 }
 
 // NewBoardState creates a new BoardState DTO from internal engine state.
-// It orchestrates the mapping of players, entities, grid, and turn order.
-// @spec-link [[api_battle_proxy]]
 func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, players []Player, ts turner.TurnState, startTime time.Time, timeout time.Time, winnerTeamID int, version int64, action *ActionFeedback) BoardState {
+	// 1. Snapshot: Capture basic match metadata, initiative, and versioning.
 	bs := BoardState{
-		StartTime:       startTime,
-		Timeout:         timeout,
-		CurrentEntityID: ts.CurrentEntityTurn.String(),
-		Players:         players,
-		Action:          action,
-		Version:         version,
+		StartTime: startTime, Timeout: timeout, CurrentEntityID: ts.CurrentEntityTurn.String(),
+		Players: players, Action: action, Version: version,
 	}
-
+	// 2. Victory Condition: Set the winning team if the battle has concluded.
 	if winnerTeamID > 0 {
+		// 2.1 Winner assignment.
 		bs.WinnerTeamID = &winnerTeamID
 	}
-
-	// Map Grid. The engine is a true 3D grid; we expose the topmost cell per
-	// (x, y) column so clients (CLI 2D ASCII / battleui 3D) share one source
-	// of truth for the walkable surface. Z information is carried in
-	// Cell.Height, and the Z ceiling via Grid.MaxHeight.
-	bs.Grid = Grid{
-		Width:     g.Width,
-		Height:    g.Length,
-		MaxHeight: g.Height,
-		Cells:     make([][]Cell, g.Width),
+	// 3. Grid Projection: Map the 3D grid layout to a 2D surface snapshot.
+	bs.Grid = mapGrid(g, entities)
+	// 4. Roster Sync: Identify players and update their entity snapshots.
+	eToP, eMap := mapEntities(entities, ts.CurrentEntityTurn, &bs)
+	// 5. Update: Push latest entity stats into the player rosters.
+	updatePlayersEntities(&bs, eMap)
+	// 6. Initiative: Hydrate the turn queue for client-side visibility.
+	for _, t := range ts.RemainingTurns {
+		// 6.1 Turn entry creation.
+		bs.Turn = append(bs.Turn, Turn{
+			EntityID: t.EntityId.String(), PlayerID: eToP[t.EntityId], Delay: t.Delay,
+		})
 	}
+	return bs
+}
 
-	// Create character lookup map for cell entity resolution
-	// @spec-link [[mechanic_multi_entity_cell_system]]
+// mapGrid converts the engine's 3D grid into the API's 2D surface projection.
+func mapGrid(g *grid.Grid, entities []entity.Entity) Grid {
+	// 1. Metadata Setup: Set width, height, and depth ceiling for projection.
+	res := Grid{
+		Width: g.Width, Height: g.Length, MaxHeight: g.Height,
+		Cells: make([][]Cell, g.Width),
+	}
+	// 2. Optimization Cache: Index characters to speed up surface resolution.
 	charMap := make(map[uuid.UUID]bool)
 	for _, e := range entities {
+		// 2.1 Character filter logic.
 		if e.Type == entity.Character || e.Type == entity.Monster {
+			// 2.2 Presence marking.
 			charMap[e.ID] = true
 		}
 	}
-
+	// 3. Projection Loop: Walk every (x,y) column to find its topmost cell.
 	for x := 0; x < g.Width; x++ {
-		bs.Grid.Cells[x] = make([]Cell, g.Length)
+		// 3.1 Column allocation.
+		res.Cells[x] = make([]Cell, g.Length)
 		for y := 0; y < g.Length; y++ {
-			z := g.TopMostCellAt(x, y)
-			cl, ok := g.CellAt(position.New(x, y, z))
-			if ok {
-				var charID string
-				// Only output the first character entity found in the cell.
-				// Effects and other non-character entities are filtered out for the API's grid view.
-				for _, eid := range cl.EntityIDs {
-					if charMap[eid] {
-						charID = eid.String()
-						break
-					}
-				}
-
-				bs.Grid.Cells[x][y] = Cell{
-					EntityID: charID,
-					Obstacle: cl.Type == cell.Obstacle,
-					Height:   z,
-				}
-			}
+			// 3.2 Cell resolution.
+			res.Cells[x][y] = resolveSurfaceCell(g, x, y, charMap)
 		}
 	}
+	return res
+}
 
-	entityToPlayer := make(map[uuid.UUID]string)
-	entityMap := make(map[uuid.UUID]Entity)
+// resolveSurfaceCell identifies the walkable properties and character ID at a specific (x,y) column.
+func resolveSurfaceCell(g *grid.Grid, x int, y int, charMap map[uuid.UUID]bool) Cell {
+	// 1. Z-Scan: Identify the highest coordinate with content in the column stack.
+	z := g.TopMostCellAt(x, y)
+	cl, ok := g.CellAt(position.New(x, y, z))
+	// 2. Existence Check: If cell is missing from map, return empty default.
+	if !ok { return Cell{} }
+	// 3. Occupancy Search: Find the first character ID present at the surface level.
+	var charID string
+	for _, eid := range cl.EntityIDs {
+		// 3.1 Character identification.
+		if charMap[eid] {
+			// 3.2 ID string assignment.
+			charID = eid.String()
+			break
+		}
+	}
+	// 4. Projection: Return Cell with height, obstacle status, and entity ID.
+	return Cell{EntityID: charID, Obstacle: cl.Type == cell.Obstacle, Height: z}
+}
+
+// mapEntities creates a lookup map for current arena entities.
+func mapEntities(entities []entity.Entity, currentTurn uuid.UUID, bs *BoardState) (map[uuid.UUID]string, map[uuid.UUID]Entity) {
+	// 1. Setup: Prepare indexing maps for entity-to-player and entity-to-DTO.
+	eToP := make(map[uuid.UUID]string)
+	eMap := make(map[uuid.UUID]Entity)
+	// 2. Transformation: Process every engine entity and mark turn ownership.
 	for _, e := range entities {
-		entityToPlayer[e.ID] = e.ControllerID.String()
+		// 2.1 Mapping: Associate entity with its controller.
+		eToP[e.ID] = e.ControllerID.String()
+		// 2.2 Conversion: Map engine entity to API DTO.
 		apiEntity := NewEntity(e)
-		entityMap[e.ID] = apiEntity
-
-		if e.ID == ts.CurrentEntityTurn {
-			bs.CurrentPlayerID = e.ControllerID.String()
-		}
+		eMap[e.ID] = apiEntity
+		// 2.3 Turn Tracking: Identify acting player for current initiative slot.
+		if e.ID == currentTurn { bs.CurrentPlayerID = e.ControllerID.String() }
 	}
+	return eToP, eMap
+}
 
-	// Update Players' entity lists with actual engine data (fixes coordinate desync)
+// updatePlayersEntities synchronizes the player roster with the latest entity data.
+func updatePlayersEntities(bs *BoardState, entityMap map[uuid.UUID]Entity) {
+	// 1. Iteration: Walk every player in the board state roster.
 	for i := range bs.Players {
-		for j := range bs.Players[i].Entities {
-			entID, err := uuid.Parse(bs.Players[i].Entities[j].ID)
-			if err == nil {
-				if actual, found := entityMap[entID]; found {
-					bs.Players[i].Entities[j] = actual
-				} else {
-					// Entity is dead/removed from engine, ensure HP is 0
-					bs.Players[i].Entities[j].HP = 0
-					bs.Players[i].Entities[j].Dead = true
-					bs.Players[i].Entities[j].EquippedSkills = make([]EquippedSkill, 0)
-					bs.Players[i].Entities[j].Buffs = make([]Buff, 0)
-					bs.Players[i].Entities[j].EquippedItems = make([]EquippedItem, 0)
-				}
-			}
+		// 1.1 Delegate: Update each player's individual entity set.
+		updateSinglePlayerEntities(&bs.Players[i], entityMap)
+	}
+}
+
+// updateSinglePlayerEntities refreshes all entities for a specific player from the live map.
+func updateSinglePlayerEntities(p *Player, entityMap map[uuid.UUID]Entity) {
+	// 1. Vitality Sync: Overwrite existing entity data with latest engine snapshots.
+	for j := range p.Entities {
+		entID, _ := uuid.Parse(p.Entities[j].ID)
+		// 1.1 Check: Verify if entity still exists in the live engine state.
+		if actual, found := entityMap[entID]; found {
+			// 1.2 Overwrite: Push latest stats to player entity DTO.
+			p.Entities[j] = actual
+		} else {
+			// 1.3 Removal: Mark as dead and clear volatile states if missing from engine.
+			p.Entities[j].HP = 0
+			p.Entities[j].Dead = true
+			p.Entities[j].EquippedSkills = []EquippedSkill{}
+			p.Entities[j].Buffs = []Buff{}
+			p.Entities[j].EquippedItems = []EquippedItem{}
 		}
 	}
-
-	for _, t := range ts.RemainingTurns {
-		bs.Turn = append(bs.Turn, Turn{
-			EntityID: t.EntityId.String(),
-			PlayerID: entityToPlayer[t.EntityId],
-			Delay:    t.Delay,
-		})
-	}
-
-	return bs
 }
 
 // behaviorName returns the string representation of a BehaviorType.
 func behaviorName(bt def.BehaviorType) string {
+	// 1. Translation: Direct string cast of the behavior enum identifier.
 	return string(bt)
 }

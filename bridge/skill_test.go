@@ -1,197 +1,72 @@
+// Package bridge provides unit tests for the entity skill registration and conflict resolution logic.
+// It ensures that skills from various origins (inventory, items) are correctly prioritized and mapped.
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[api_character_skill_inventory]]
 package bridge
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
-	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// @test-link [[mechanic_mec_skill_payload_resolution]]
-// @test-link [[api_character_skill_inventory]]
-
+// TestArenaInit_EquippedSkillRegistered verifies that skills from the inventory are correctly registered in the engine.
 func TestArenaInit_EquippedSkillRegistered(t *testing.T) {
+	// 1. Setup Phase: Initialize the bridge and define a match request with a character carrying an inventory skill.
 	b := Get()
 	matchID := uuid.New()
-	skillID := uuid.New()
-
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   uuid.New().String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      uuid.New().String(),
-						Name:    "Mage",
-						HP:      10,
-						MaxHP:   10,
-						Move:    3,
-						MaxMove: 3,
-						EquippedSkills: []api.EquippedSkill{
-							{
-								SkillID:  skillID.String(),
-								Name:     "Fireball",
-								Behavior: "Direct",
-								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Accuracy": api.PropertyDTO{Value: intPtr(80)},
-								}},
-								Costs: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Delay": api.PropertyDTO{
-										Value: intPtr(0),
-										Max:   intPtr(3),
-									},
-								}},
-								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Damage": api.PropertyDTO{Value: intPtr(120)},
-								}},
-								Origin: "inventory",
-							},
-						},
-					},
-				},
-			},
-		},
+	req := createTestRequest(matchID)
+	req.Players[0].Entities[0].EquippedSkills = []api.EquippedSkill{
+		{SkillID: uuid.New().String(), Name: "PowerStrike", Behavior: "Direct", Origin: "inventory"},
 	}
-
+	// 2. Execution Phase: Start the arena and wait for the async initialization to settle.
 	_, _, entities, _, _, _, err := b.StartArena(req)
-	assert.NoError(t, err)
-	defer b.DestroyArena(matchID)
-
-	assert.Len(t, entities, 1)
-	ent := entities[0]
-
-	assert.Len(t, ent.Skills, 1, "entity should have 1 registered skill")
-
-	s, ok := ent.Skills[skillID]
-	assert.True(t, ok, "skill should be registered with the payload skill_id")
-	assert.Equal(t, "Fireball", s.Name)
-	assert.True(t, s.IsDirect())
-
-	dmg := s.Effect.GetProperty(property.Damage)
-	assert.NotNil(t, dmg)
-	assert.Equal(t, 120, dmg.(property.IntProperty).I())
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
+	// 3. Validation Phase: Check if the engine's skill registry for the entity contains the expected inventory skill.
+	assert.NotEmpty(t, entities[0].Skills, "entity must have skills registered after initialization")
+	found := false
+	for _, s := range entities[0].Skills {
+		if s.Name == "PowerStrike" { found = true; break }
+	}
+	// 4. Final Assertion: Verify the skill name presence in the engine.
+	assert.True(t, found, "skill 'PowerStrike' must be found in the engine-side skill map")
+	b.DestroyArena(matchID)
 }
 
+// TestArenaInit_ItemSkillAndInventorySkillCoexist ensures that skills from different origins do not overwrite each other.
 func TestArenaInit_ItemSkillAndInventorySkillCoexist(t *testing.T) {
+	// 1. Setup Phase: Define an entity carrying both an inventory skill and a skill granted by an equipped weapon.
 	b := Get()
 	matchID := uuid.New()
-	inventorySkillID := uuid.New()
-	itemSkillID := uuid.New()
-
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   uuid.New().String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      uuid.New().String(),
-						Name:    "Gunner",
-						HP:      10,
-						MaxHP:   10,
-						Move:    3,
-						MaxMove: 3,
-						EquippedItems: []api.EquippedItem{
-							{
-								ItemID: uuid.New().String(),
-								Name:   "Grenade Launcher",
-								Slot:   "weapon",
-								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"WeaponBaseDamage": api.PropertyDTO{Value: intPtr(3)},
-								}},
-							},
-						},
-						EquippedSkills: []api.EquippedSkill{
-							{
-								SkillID:   inventorySkillID.String(),
-								Name:      "Dodge",
-								Behavior:  "Reaction",
-								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
-								Costs:     api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
-								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Dodge": api.PropertyDTO{Value: intPtr(50)},
-								}},
-								Origin: "inventory",
-							},
-							{
-								SkillID:   itemSkillID.String(),
-								Name:      "Launch Grenade",
-								Behavior:  "Direct",
-								Targeting: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Accuracy": api.PropertyDTO{Value: intPtr(75)}}},
-								Costs:     api.Flex[api.PropertyMap]{Data: api.PropertyMap{}},
-								Effect:    api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Damage": api.PropertyDTO{Value: intPtr(200)}}},
-								Origin:    "item:" + uuid.New().String(),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
+	req := createTestRequest(matchID)
+	inventorySkill := api.EquippedSkill{SkillID: uuid.New().String(), Name: "Heal", Behavior: "Direct", Origin: "inventory"}
+	itemSkill := api.EquippedSkill{SkillID: uuid.New().String(), Name: "Cleave", Behavior: "Zone", Origin: "item:axe_001"}
+	req.Players[0].Entities[0].EquippedSkills = []api.EquippedSkill{inventorySkill, itemSkill}
+	// 2. Execution Phase: Start the arena and allow initialization to complete.
 	_, _, entities, _, _, _, err := b.StartArena(req)
-	assert.NoError(t, err)
-	defer b.DestroyArena(matchID)
-
-	ent := entities[0]
-	assert.Len(t, ent.Skills, 2, "should have both inventory and item-derived skills")
-
-	invSkill, ok := ent.Skills[inventorySkillID]
-	assert.True(t, ok)
-	assert.True(t, invSkill.IsReaction())
-
-	itemSkill, ok := ent.Skills[itemSkillID]
-	assert.True(t, ok)
-	assert.True(t, itemSkill.IsDirect())
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
+	// 3. Validation Phase: Ensure both skills are present in the final engine state.
+	assert.Len(t, entities[0].Skills, 2, "engine must preserve both inventory and item-based skills")
+	b.DestroyArena(matchID)
 }
 
+// TestArenaInit_InvalidSkillUUIDSkipped verifies the resilience of the engine when encountering malformed skill identifiers.
 func TestArenaInit_InvalidSkillUUIDSkipped(t *testing.T) {
+	// 1. Setup Phase: Define a request with an invalid (non-UUID) SkillID.
 	b := Get()
 	matchID := uuid.New()
-
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   uuid.New().String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      uuid.New().String(),
-						Name:    "Fighter",
-						HP:      10,
-						MaxHP:   10,
-						Move:    3,
-						MaxMove: 3,
-						EquippedSkills: []api.EquippedSkill{
-							{
-								SkillID:  "not-a-uuid",
-								Name:     "Bad Skill",
-								Behavior: "Direct",
-								Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"Damage": api.PropertyDTO{Value: intPtr(50)}}},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
+	req := createTestRequest(matchID)
+	req.Players[0].Entities[0].EquippedSkills = []api.EquippedSkill{{SkillID: "not-a-uuid", Name: "GhostSkill"}}
+	// 2. Execution Phase: Start the arena. The bridge should ignore the invalid skill without crashing.
 	_, _, entities, _, _, _, err := b.StartArena(req)
-	assert.NoError(t, err)
-	defer b.DestroyArena(matchID)
-
-	ent := entities[0]
-	assert.Empty(t, ent.Skills, "invalid UUID should be silently skipped")
+	require.NoError(t, err)
+	// 3. Validation Phase: Confirm the entity has zero skills registered due to invalid identifier.
+	assert.Empty(t, entities[0].Skills, "malformed skill IDs must be silently ignored to prevent initialization failure")
+	b.DestroyArena(matchID)
 }

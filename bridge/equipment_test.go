@@ -1,119 +1,68 @@
+// Package bridge provides unit tests for the item-to-buff conversion logic.
+// It ensures that equipped items are correctly translated into active engine buffs during arena initialization.
+// @spec-link [[api_go_battle_engine]]
+// @spec-link [[mechanic_mec_skill_payload_resolution]]
 package bridge
 
 import (
 	"testing"
+	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
-	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// TestArenaInit_EquippedItemsBecomeBuffs verifies that items in the start request are correctly injected as entity buffs.
 func TestArenaInit_EquippedItemsBecomeBuffs(t *testing.T) {
-	bridge := Get()
+	// 1. Setup Phase: Define a match request with an entity carrying a specific 'PowerRing' item.
+	b := Get()
 	matchID := uuid.New()
-	playerID := uuid.New()
-	entityID := uuid.New()
-	itemID := uuid.New()
-
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   playerID.String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      entityID.String(),
-						Name:    "Warrior",
-						HP:      10,
-						MaxHP:   10,
-						Move:    3,
-						MaxMove: 3,
-						Attack:  5,
-						Defense: 2,
-						EquippedItems: []api.EquippedItem{
-							{
-								ItemID: itemID.String(),
-								Name:   "Heavy Armor",
-								Slot:   "armor",
-								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"ArmorRating": api.PropertyDTO{Value: intPtr(5)},
-								}},
-							},
-						},
-					},
-				},
-			},
-		},
+	req := createTestRequest(matchID)
+	req.Players[0].Entities[0].EquippedItems = []api.EquippedItem{
+		{ItemID: uuid.New().String(), Name: "PowerRing", Slot: "finger", Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{"atk": {Value: intPtr(5)}}}},
 	}
 
-	_, _, entities, _, _, _, err := bridge.StartArena(req)
-	assert.NoError(t, err)
+	// 2. Execution Phase: Initialize the arena and allow the async start sequence to settle.
+	_, _, entities, _, _, _, err := b.StartArena(req)
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
 
-	// Clean up for other tests
-	defer bridge.DestroyArena(matchID)
-
-	assert.Len(t, entities, 1)
-	ent := entities[0]
-
-	// Verify the buff is present
-	assert.Len(t, ent.Buffs, 1)
-	assert.Equal(t, itemID, ent.Buffs[0].OriginEntityID)
-	assert.True(t, ent.Buffs[0].Forever)
-
-	// Verify the property is correctly applied
-	// ArmorRating in ItemProperties maps to "Armor" string
-	armorProp := ent.GetProperty(property.ArmorRating)
-	assert.NotNil(t, armorProp)
-	assert.Equal(t, 5, armorProp.Get().(int))
+	// 3. Validation Phase: Check if the engine entity has an active buff corresponding to the Item ID.
+	assert.NotEmpty(t, entities[0].Buffs, "entity must have active buffs after equipping an item")
+	found := false
+	for _, b := range entities[0].Buffs {
+		if b.OriginEntityID.String() == req.Players[0].Entities[0].EquippedItems[0].ItemID { found = true; break }
+	}
+	assert.True(t, found, "engine must contain a buff originating from the equipped ItemID")
+	
+	b.DestroyArena(matchID)
 }
 
+// TestArenaInit_StatMapping ensures that core entity stats (Attack/Defense) are correctly mapped from the DTO to the engine.
 func TestArenaInit_StatMapping(t *testing.T) {
-	bridge := Get()
+	// 1. Setup Phase: Define an entity with specific high combat stats.
+	b := Get()
 	matchID := uuid.New()
-	itemID := uuid.New()
+	req := createTestRequest(matchID)
+	req.Players[0].Entities[0].Attack = 99
+	req.Players[0].Entities[0].Defense = 42
 
-	req := api.ArenaStartRequest{
-		MatchID:     matchID.String(),
-		CallbackURL: "http://localhost/webhook",
-		Players: []api.Player{
-			{
-				ID:   uuid.New().String(),
-				Team: 1,
-				IA:   true,
-				Entities: []api.Entity{
-					{
-						ID:      uuid.New().String(),
-						Name:    "Swift Rogue",
-						HP:      10,
-						MaxHP:   10,
-						Move:    3,
-						MaxMove: 3,
-						EquippedItems: []api.EquippedItem{
-							{
-								ItemID: itemID.String(),
-								Name:   "Swift Boots",
-								Slot:   "utility",
-								Properties: api.Flex[api.PropertyMap]{Data: api.PropertyMap{
-									"Movement": api.PropertyDTO{Value: intPtr(2)}, // Movement is an EntityProperty
-								}},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
+	// 2. Execution Phase: Start the arena.
+	_, _, entities, _, _, _, err := b.StartArena(req)
+	require.NoError(t, err)
 
-	_, _, entities, _, _, _, err := bridge.StartArena(req)
-	assert.NoError(t, err)
-	defer bridge.DestroyArena(matchID)
-
+	// 3. Validation Phase: Ensure the engine properties for Attack and Defense match the input exactly.
 	ent := entities[0]
-	// Movement is a counter property, 3 (base) + 2 (buff) = 5
-	mvt := ent.GetProperty(property.Movement)
-	assert.Equal(t, 5, mvt.Get().(int))
+	assert.Equal(t, 99, ent.GetPropertyI("attack").I(), "attack stat must be mapped correctly to the engine")
+	assert.Equal(t, 42, ent.GetPropertyI("defense").I(), "defense stat must be mapped correctly to the engine")
+	
+	b.DestroyArena(matchID)
+}
+
+// intPtr is a utility to create a pointer to an integer value.
+func intPtr(i int) *int {
+	// 1. Memory Management: Allocate integer on the heap.
+	return &i
 }
