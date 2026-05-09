@@ -45,10 +45,11 @@ func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardSt
 	if err := b.restoreEntities(battleArena, req); err != nil { return api.BoardState{}, err }
 	// 6. State Recovery: Restore the initiative timeline and versioning metadata.
 	currentEntityID := b.restoreEngineState(battleArena, req)
-	// 7. Connectivity: Re-establish human and AI controllers for the session.
-	b.reconnectControllers(battleArena, matchID, req)
-	// 8. Lifecycle: Start the Ruler actor and hand off the current turn.
+	// 7. Lifecycle: Start the Ruler actor so it can process controller registrations.
 	battleArena.Ruler.Start()
+	// 8. Connectivity: Re-establish human and AI controllers for the session.
+	b.reconnectControllers(battleArena, matchID, req)
+	// 9. Hand-off: Signal the Ruler to resume tactical turn execution.
 	b.registerAndHandOff(matchID, battleArena, currentEntityID)
 	// 9. Response: Return a full board state snapshot for client synchronization.
 	return b.buildResurrectionBoardState(matchID, battleArena, req), nil
