@@ -20,7 +20,6 @@ import (
 )
 
 // setupRouter initializes the Gin engine with the standard Upsilon routing table.
-// @test-link [[api_go_routing_table]]
 // @test-link [[api_go_battle_engine]]
 func setupRouter() *gin.Engine {
 	// 1. Initial Setup: Create a default Gin engine with recovery and logging.
@@ -155,7 +154,6 @@ func waitForWebhook(t *testing.T, events <-chan map[string]interface{}, expected
 			t.Fatalf("Timeout waiting for webhook event: %s", expectedType)
 		}
 	}
-	return nil
 }
 
 // isEventType identifies if a raw event map matches the target type string.

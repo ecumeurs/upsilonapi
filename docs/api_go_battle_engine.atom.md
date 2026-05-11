@@ -28,7 +28,7 @@ To define the external JSON boundary for UpsilonBattle, allowing the Laravel Gat
 The Go Battle Engine API is composed of several specialized endpoints and a webhook dispatcher. It maintains a consolidated 'players' state where each player nests its live entities, including shared 'team' and 'is_self' status to prevent ID leakage. All communications follow the [[api_standard_envelope]].
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **Base Path:** `/internal`
+- **Base Path:** `/v1`
 - **Port:** `8081`
 - **Code Tag:** `@spec-link [[api_go_battle_engine]]`
 

@@ -57,7 +57,7 @@ func main() {
 
 // registerV1Routes defines the routing table for version 1 of the Upsilon API.
 // It maps REST endpoints to their respective handlers in the handler package.
-// @spec-link [[api_go_routing_table]]
+// @spec-link [[api_go_battle_engine]]
 func registerV1Routes(r *gin.Engine) {
 	v1 := r.Group("/v1")
 	{

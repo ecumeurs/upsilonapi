@@ -88,7 +88,7 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 // PropertyMap is a utility type for collections of named engine properties.
 type PropertyMap = map[string]PropertyDTO
 
-// @spec-link [[api_go_battle_engine]]
+
 
 // Position represents a 2D coordinate on the engine grid.
 type Position struct {

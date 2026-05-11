@@ -156,6 +156,8 @@ func (b *ArenaBridge) configureArenaEntities(ba *battlearena.BattleArena, player
 	return nil
 }
 
+// applyItemAsBuff converts an equipped item from the API into a permanent engine buff.
+// It maps item properties, effects, and zones into the entity's property set.
 func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) {
 	itemID, err := uuid.Parse(item.ItemID)
 	if err != nil {
@@ -197,6 +199,8 @@ func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) {
 	e.RegisterBuff(buff)
 }
 
+// registerEntitySkill maps an equipped skill from the API into the engine's skill system.
+// It configures behavior, targeting, costs, and effects for the entity.
 func (b *ArenaBridge) registerEntitySkill(e *entity.Entity, es api.EquippedSkill) {
 	skillID, err := uuid.Parse(es.SkillID)
 	if err != nil {

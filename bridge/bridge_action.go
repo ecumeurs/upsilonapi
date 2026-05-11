@@ -1,10 +1,5 @@
 package bridge
 
-// @spec-link [[api_go_battle_action]]
-// @spec-link [[api_go_battle_forfeit]]
-// @spec-link [[rule_forfeit_battle]]
-// @spec-link [[mech_game_state_versioning]]
-
 import (
 	"fmt"
 	"strings"
@@ -202,6 +197,7 @@ func (b *ArenaBridge) ArenaAction(arenaID uuid.UUID, req api.ArenaActionMessage)
 // ArenaForfeit allows a player to concede the match.
 // It is team-wide and does not require a specific entity context.
 // @spec-link [[api_go_battle_forfeit]]
+// @spec-link [[rule_forfeit_battle]]
 func (b *ArenaBridge) ArenaForfeit(arenaID uuid.UUID, playerID uuid.UUID) (bool, string, string, interface{}) {
 	// Look up the active Ruler.
 	r, ok := b.GetArena(arenaID)
