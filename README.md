@@ -18,11 +18,22 @@ Built for scalability and precision, it uses an actor-model architecture to mana
 - Go 1.22+
 
 ### Installation & Run
-To start the engine locally:
+
+#### Development (Run from Source)
+To start the engine directly from source:
 
 ```bash
 go run main.go
 ```
+
+#### Production Build
+To compile a binary for distribution or deployment:
+
+```bash
+go build -o bin/upsilonapi .
+./bin/upsilonapi
+```
+
 The server will start on `:8081` by default.
 
 ## Project Structure
