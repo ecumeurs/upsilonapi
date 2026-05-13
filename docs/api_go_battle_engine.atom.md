@@ -17,6 +17,7 @@ dependents:
   - [[api_go_battle_start]]
   - [[api_go_health_check]]
   - [[api_go_webhook_callback]]
+  - [[api_skill_generation]]
   - [[module_upsilonapi]]
 ---
 # Go UpsilonBattle JSON API & Webhook Dispatcher

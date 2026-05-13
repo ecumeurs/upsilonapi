@@ -19,7 +19,7 @@ dependents: []
 To allow a player to concede a match through a dedicated endpoint that does not require an entity context.
 
 ## THE RULE / LOGIC
-**Endpoint:** `POST /internal/arena/{id}/forfeit`
+**Endpoint:** `POST /v1/arena/{id}/forfeit`
 
 ### Request (Wrapped in [[api_standard_envelope]])
 - `player_id`: `string (UUID)` [MANDATORY]
@@ -28,7 +28,7 @@ To allow a player to concede a match through a dedicated endpoint that does not 
 Standard success envelope. Triggers an immediate `game.ended` event with the remaining team marked as winner.
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **API Endpoint:** `POST /internal/arena/:id/forfeit`
+- **API Endpoint:** `POST /v1/arena/:id/forfeit`
 - **Code Tag:** `@spec-link [[api_go_battle_forfeit]]`
 - **Go Handler:** `handler.HandleArenaForfeit`
 - **Request Type:** `api.ArenaForfeitRequest`

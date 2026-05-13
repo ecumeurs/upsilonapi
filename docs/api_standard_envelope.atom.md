@@ -20,6 +20,7 @@ dependents:
   - [[api_go_battle_start]]
   - [[api_go_webhook_callback]]
   - [[api_profile_export]]
+  - [[api_skill_generation]]
 ---
 # Standard JSON Message Envelope
 

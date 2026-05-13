@@ -20,11 +20,11 @@ dependents:
 To allow players to perform tactical actions (Move, Attack, Skill) within an active battle arena.
 
 ## THE RULE / LOGIC
-**Endpoint:** `POST /internal/arena/{id}/action`
+**Endpoint:** `POST /v1/arena/{id}/action`
 **Payload:** `api.ArenaActionRequest` (contains `type`, `entity_id`, `player_id`, `target_coords`, and optional `skill_id`).
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **API Endpoint:** `POST /internal/arena/:id/action`
+- **API Endpoint:** `POST /v1/arena/:id/action`
 - **Code Tag:** `@spec-link [[api_go_battle_action]]`
 - **Go Handler:** `handler.HandleArenaAction`
 - **Request Type:** `api.ArenaActionRequest`
@@ -32,7 +32,6 @@ To allow players to perform tactical actions (Move, Attack, Skill) within an act
   - `Attack/Skill`: Returns `gin.H` with `results` (ActionResults) and `attacker`/`entity`.
   - `Move`: Returns `gin.H` with `results` (path/HP deltas) and `entity`.
   - `Credits`: Mapped into `results` or top-level depending on action type.
-- **Versioning:** No `Version` field in synchronous reply (broadcast only).
 
 ## EXPECTATION (For Testing)
 - Valid `ArenaActionRequest` -> Ruler processes action -> Returns `200 OK`.

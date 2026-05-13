@@ -19,25 +19,29 @@ dependents:
 To initialize a new battle arena instance with players, entities, and map data.
 
 ## THE RULE / LOGIC
-**Endpoint:** `POST /internal/arena/start`
+**Endpoint:** `POST /v1/arena/start`
 
 ### Request (Wrapped in [[api_standard_envelope]])
-- `match_id`: `string (UUID)` [MANDATORY] - Unique identifier for the match.
-- `callback_url`: `string` [MANDATORY] - Internal URL for webhook events.
-- `players`: `Array<Player>` [MANDATORY] - At least one player required.
-  - `id`: `string (UUID)` [MANDATORY]
-  - `nickname`: `string` - Player display name.
+- `match_id`: `string (UUID)` [MANDATORY]
+- `callback_url`: `string` [MANDATORY]
+- `players`: `Array<Player>` [MANDATORY]
+  - `id`: `string (UUID)`
+  - `nickname`: `string`
   - `team`: `int`
   - `ia`: `boolean`
-  - `entities`: `Array<Entity>` (See [[entity_character]]) [MANDATORY]
-    - `max_hp`: `int` [MANDATORY] - Must be > 0.
+  - `archetype`: `string` (Optional: default for entities)
+  - `total_wins`: `int` (For IA grade scaling)
+  - `entities`: `Array<Entity>`
+    - `max_hp`: `int`
+    - `auto_gen`: `boolean` (True -> Procedural generation)
+    - `archetype`: `string` (Optional override)
 
 ### Response (Wrapped in [[api_standard_envelope]])
-- `arena_id`: `string (UUID)` - The internally generated Arena ID.
-- `initial_state`: `BoardState` (See [[api_go_battle_engine]])
+- `arena_id`: `string (UUID)`
+- `initial_state`: `BoardState`
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **API Endpoint:** `POST /internal/arena/start`
+- **API Endpoint:** `POST /v1/arena/start`
 - **Code Tag:** `@spec-link [[api_go_battle_start]]`
 - **Go Handler:** `handler.HandleArenaStart`
 - **Request Type:** `api.ArenaStartRequest`
