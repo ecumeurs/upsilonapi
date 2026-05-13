@@ -11,7 +11,6 @@ import (
 
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonbattle/battlearena"
-	"github.com/ecumeurs/upsilonbattle/battlearena/controller/controllers"
 	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/ecumeurs/upsilontypes/entity/skill"
 	"github.com/ecumeurs/upsilonmapdata/grid"
@@ -32,6 +31,9 @@ import (
 func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.Grid, []entity.Entity, []api.Player, turner.TurnState, int64, error) {
 	if start.MatchID == "" {
 		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, fmt.Errorf("mandatory field match_id is missing")
+	}
+	if err := validateTeamComposition(start.Players); err != nil {
+		return uuid.Nil, nil, nil, nil, turner.TurnState{}, 0, err
 	}
 	matchID, err := uuid.Parse(start.MatchID)
 	if err != nil {
@@ -93,66 +95,95 @@ func (b *ArenaBridge) StartArena(start api.ArenaStartRequest) (uuid.UUID, *grid.
 }
 
 // configureArenaEntities maps API player/entity data into the engine.
-// It handles position resolution, property mapping, and inventory registration.
+// When Entity.AutoGen is true the entity's stats and skills are generated from
+// the resolved archetype + grade; otherwise the explicit values are used as before.
 func (b *ArenaBridge) configureArenaEntities(ba *battlearena.BattleArena, players []api.Player) error {
-	// Iterate through each player provided in the start request.
+	teamSlugs := make(map[int][]string)
 	for _, p := range players {
 		playerID, err := uuid.Parse(p.ID)
 		if err != nil {
 			return fmt.Errorf("invalid player_id for player %s: %w", p.Nickname, err)
 		}
-
-		// Process each entity owned by the player.
-		for _, ee := range p.Entities {
-			entID, err := uuid.Parse(ee.ID)
-			if err != nil {
-				return fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
-			}
-			// Enforce minimum HP constraints to prevent initialization of dead entities.
-			if ee.MaxHP <= 0 {
-				return fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
-			}
-
-			// Construct the core engine entity.
-			e := entity.Entity{
-				ID:           entID,
-				Type:         entity.Character,
-				Name:         ee.Name,
-				ControllerID: playerID,
-			}
-			e.Properties = make(map[string]property.Property)
-			e.Skills = make(map[uuid.UUID]skill.Skill)
-			
-			// Resolve the entity's starting position on the 3D grid.
-			if ee.Position.X != 0 || ee.Position.Y != 0 {
-				e.Position = position.New(ee.Position.X, ee.Position.Y, ba.Ruler.GameState.Grid.TopMostGroundAt(ee.Position.X, ee.Position.Y))
-			}
-
-			// Repsert core properties (HP, Movement, Attack, Defense, Team).
-			e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
-			e.RepsertPropertyCValue(property.HP, ee.HP)
-			e.RepsertPropertyCMaxValue(property.Movement, ee.MaxMove)
-			e.RepsertPropertyCValue(property.Movement, ee.Move)
-			e.RepsertPropertyValue(property.Attack, ee.Attack)
-			e.RepsertPropertyValue(property.Defense, ee.Defense)
-			e.RepsertPropertyValue(property.TeamID, p.Team)
-
-			// Items are applied as permanent buffs that modify entity properties.
-			// @spec-link [[mec_item_buff_application]]
-			for _, item := range ee.EquippedItems {
-				b.applyItemAsBuff(&e, item)
-			}
-
-			// Skills are registered in the entity's skill set for tactical use.
-			// @spec-link [[api_character_skill_inventory]]
-			for _, es := range ee.EquippedSkills {
-				b.registerEntitySkill(&e, es)
-			}
-
-			// Add the fully configured entity to the Ruler's game state.
-			ba.Ruler.AddEntity(e)
+		if err := b.configurePlayerEntities(ba, p, playerID, teamSlugs); err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+// configurePlayerEntities adds all entities for one player to the arena.
+func (b *ArenaBridge) configurePlayerEntities(ba *battlearena.BattleArena, p api.Player, playerID uuid.UUID, teamSlugs map[int][]string) error {
+	playerGrade := resolvePlayerGrade(p)
+	for _, ee := range p.Entities {
+		entID, err := uuid.Parse(ee.ID)
+		if err != nil {
+			return fmt.Errorf("invalid entity_id for entity %s: %w", ee.Name, err)
+		}
+		if ee.AutoGen {
+			if err := b.addAutoGenEntity(ba, p, ee, entID, playerID, playerGrade, teamSlugs); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := b.addExplicitEntity(ba, p, ee, entID, playerID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// addAutoGenEntity generates an entity from archetype+grade and registers it in the arena.
+func (b *ArenaBridge) addAutoGenEntity(ba *battlearena.BattleArena, p api.Player, ee api.Entity, entID, playerID uuid.UUID, playerGrade string, teamSlugs map[int][]string) error {
+	slug := resolveArchetypeSlug(ee.Archetype, p.Archetype, teamSlugs[p.Team])
+	teamSlugs[p.Team] = append(teamSlugs[p.Team], slug)
+	entGrade := resolveEntityGrade(ee, playerGrade)
+
+	startPos := position.Position{}
+	if ee.Position.X != 0 || ee.Position.Y != 0 {
+		startPos = position.New(ee.Position.X, ee.Position.Y, ba.Ruler.GameState.Grid.TopMostGroundAt(ee.Position.X, ee.Position.Y))
+	}
+
+	e, err := generateEntityFromArchetype(entID, ee.Name, p.Team, playerID, slug, entGrade, startPos)
+	if err != nil {
+		return fmt.Errorf("auto-gen failed for entity %s: %w", ee.Name, err)
+	}
+	ba.Ruler.AddEntity(e)
+	return nil
+}
+
+// addExplicitEntity builds an entity from explicitly provided stats and registers it in the arena.
+func (b *ArenaBridge) addExplicitEntity(ba *battlearena.BattleArena, p api.Player, ee api.Entity, entID, playerID uuid.UUID) error {
+	if ee.MaxHP <= 0 {
+		return fmt.Errorf("entity %s must have max_hp > 0", ee.Name)
+	}
+	e := entity.Entity{
+		ID:           entID,
+		Type:         entity.Character,
+		Name:         ee.Name,
+		ControllerID: playerID,
+	}
+	e.Properties = make(map[string]property.Property)
+	e.Skills = make(map[uuid.UUID]skill.Skill)
+
+	if ee.Position.X != 0 || ee.Position.Y != 0 {
+		e.Position = position.New(ee.Position.X, ee.Position.Y, ba.Ruler.GameState.Grid.TopMostGroundAt(ee.Position.X, ee.Position.Y))
+	}
+
+	e.RepsertPropertyCMaxValue(property.HP, ee.MaxHP)
+	e.RepsertPropertyCValue(property.HP, ee.HP)
+	e.RepsertPropertyCMaxValue(property.Movement, ee.MaxMove)
+	e.RepsertPropertyCValue(property.Movement, ee.Move)
+	e.RepsertPropertyValue(property.Attack, ee.Attack)
+	e.RepsertPropertyValue(property.Defense, ee.Defense)
+	e.RepsertPropertyValue(property.TeamID, p.Team)
+
+	for _, item := range ee.EquippedItems {
+		b.applyItemAsBuff(&e, item)
+	}
+	for _, es := range ee.EquippedSkills {
+		b.registerEntitySkill(&e, es)
+	}
+	ba.Ruler.AddEntity(e)
 	return nil
 }
 
@@ -253,8 +284,13 @@ func (b *ArenaBridge) setupControllers(ba *battlearena.BattleArena, callbackURL 
 		var ctrl actor.Communication
 		pID := uuid.MustParse(p.ID)
 		if p.IA {
-			// Create a dedicated IA controller for automated players.
-			iac := controllers.NewAggressiveController(pID, fmt.Sprintf("AggressiveController-%s", p.ID))
+			// Determine the archetype for this AI player (first entity's resolved slug, or player-level).
+			slug := p.Archetype
+			if slug == "" && len(p.Entities) > 0 {
+				slug = p.Entities[0].Archetype
+			}
+			gradeStr := resolvePlayerGrade(p)
+			iac := newAIControllerForArchetype(pID, fmt.Sprintf("AIController-%s", p.ID), slug, gradeStr)
 			iac.Start()
 			ctrl = iac
 		} else {
