@@ -186,13 +186,17 @@ type ArenaForfeitRequest struct {
 
 // ArenaResurrectRequest carries persisted board state from Laravel to rebuild a crashed arena.
 type ArenaResurrectRequest struct {
-	MatchID         string          `json:"match_id"`
-	CallbackURL     string          `json:"callback_url"`
-	Players         []Player        `json:"players"`
-	Grid            ResurrectGrid   `json:"grid"`
-	Turns           []ResurrectTurn `json:"turns"`
-	CurrentEntityID string          `json:"current_entity_id"`
-	Version         int64           `json:"version"`
+	MatchID           string          `json:"match_id"`
+	CallbackURL       string          `json:"callback_url"`
+	Players           []Player        `json:"players"`
+	Grid              ResurrectGrid   `json:"grid"`
+	Turns             []ResurrectTurn `json:"turns"`
+	CurrentEntityID   string          `json:"current_entity_id"`
+	Version           int64           `json:"version"`
+	// SerializerVersion must match upsilonserializer.CurrentSerializerVersion.
+	// Blobs written before versioning was introduced will carry zero (absent field),
+	// which is explicitly rejected by the resurrection guard.
+	SerializerVersion int             `json:"serializer_version"`
 }
 
 // ResurrectGrid is the 2D projection of the engine grid sufficient to rebuild pathfinding.

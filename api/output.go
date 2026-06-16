@@ -11,6 +11,7 @@ import (
 	"github.com/ecumeurs/upsilonmapdata/grid"
 	"github.com/ecumeurs/upsilonmapdata/grid/cell"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
+	"github.com/ecumeurs/upsilonserializer"
 	"github.com/ecumeurs/upsilontypes/entity"
 	"github.com/ecumeurs/upsilontypes/entity/skill"
 	"github.com/ecumeurs/upsilontypes/property"
@@ -115,16 +116,21 @@ type ActionFeedback struct {
 
 // BoardState represents the current state of the board.
 type BoardState struct {
-	Players         []Player        `json:"players"` // Consolidated roster
-	Grid            Grid            `json:"grid"`
-	Turn            []Turn          `json:"turn"`
-	CurrentPlayerID string          `json:"current_player_id"`
-	CurrentEntityID string          `json:"current_entity_id"`
-	Timeout         time.Time       `json:"timeout"`
-	StartTime       time.Time       `json:"start_time"`
-	WinnerTeamID    *int            `json:"winner_team_id"`
-	Action          *ActionFeedback `json:"action,omitempty"`
-	Version         int64           `json:"version"`
+	Players           []Player        `json:"players"` // Consolidated roster
+	Grid              Grid            `json:"grid"`
+	Turn              []Turn          `json:"turn"`
+	CurrentPlayerID   string          `json:"current_player_id"`
+	CurrentEntityID   string          `json:"current_entity_id"`
+	Timeout           time.Time       `json:"timeout"`
+	StartTime         time.Time       `json:"start_time"`
+	WinnerTeamID      *int            `json:"winner_team_id"`
+	Action            *ActionFeedback `json:"action,omitempty"`
+	Version           int64           `json:"version"`
+	// SerializerVersion is the embedded schema version stamped into every persisted blob.
+	// It must match upsilonserializer.CurrentSerializerVersion on resurrection; a mismatch
+	// or absent value (zero) triggers an explicit Crash-Early error rather than a silent
+	// mis-deserialization.
+	SerializerVersion int             `json:"serializer_version"`
 }
 
 // ArenaEvent is the payload for the webhook
@@ -387,6 +393,8 @@ func NewBoardState(matchID uuid.UUID, g *grid.Grid, entities []entity.Entity, pl
 	bs := BoardState{
 		StartTime: startTime, Timeout: timeout, CurrentEntityID: ts.CurrentEntityTurn.String(),
 		Players: players, Action: action, Version: version,
+		// Stamp the schema version into every blob so resurrection can detect incompatible shapes.
+		SerializerVersion: upsilonserializer.CurrentSerializerVersion,
 	}
 	// 2. Victory Condition: Set the winning team if the battle has concluded.
 	if winnerTeamID > 0 {

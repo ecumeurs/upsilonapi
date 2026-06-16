@@ -15,6 +15,7 @@ import (
 	"github.com/ecumeurs/upsilonmapdata/grid"
 	"github.com/ecumeurs/upsilonmapdata/grid/cell"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
+	"github.com/ecumeurs/upsilonserializer"
 	"github.com/ecumeurs/upsilontypes/property"
 	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/ecumeurs/upsilontools/tools/actor"
@@ -37,22 +38,50 @@ func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardSt
 	if b.isArenaActive(matchID) {
 		return api.BoardState{}, fmt.Errorf("arena %s is already running — resurrection not needed", matchID)
 	}
-	// 3. Grid Reconstruction: Rebuild the 3D engine grid from the 2D serialized projection.
+	// 3. Schema-version guard (Crash-Early): Refuse blobs whose embedded serializer
+	//    version is absent (zero) or does not match the current engine schema.
+	//    A mismatch indicates a stale or incompatible blob that would silently
+	//    mis-deserialize engine state (audit risk R7 / WP-D2).
+	if err := validateSerializerVersion(req.SerializerVersion); err != nil { return api.BoardState{}, err }
+	// 4. Grid Reconstruction: Rebuild the 3D engine grid from the 2D serialized projection.
 	g := resurrectGrid(req.Grid)
-	// 4. Arena Setup: Initialize the core BattleArena container and its metadata.
+	// 5. Arena Setup: Initialize the core BattleArena container and its metadata.
 	battleArena := b.initResurrectedArena(matchID, g, req)
-	// 5. Entity Restoration: Hydrate the engine with saved characters, stats, and buffs.
+	// 6. Entity Restoration: Hydrate the engine with saved characters, stats, and buffs.
 	if err := b.restoreEntities(battleArena, req); err != nil { return api.BoardState{}, err }
-	// 6. State Recovery: Restore the initiative timeline and versioning metadata.
+	// 7. State Recovery: Restore the initiative timeline and versioning metadata.
 	currentEntityID := b.restoreEngineState(battleArena, req)
-	// 7. Lifecycle: Start the Ruler actor so it can process controller registrations.
+	// 8. Lifecycle: Start the Ruler actor so it can process controller registrations.
 	battleArena.Ruler.Start()
-	// 8. Connectivity: Re-establish human and AI controllers for the session.
+	// 9. Connectivity: Re-establish human and AI controllers for the session.
 	b.reconnectControllers(battleArena, matchID, req)
-	// 9. Hand-off: Signal the Ruler to resume tactical turn execution.
+	// 10. Hand-off: Signal the Ruler to resume tactical turn execution.
 	b.registerAndHandOff(matchID, battleArena, currentEntityID)
-	// 9. Response: Return a full board state snapshot for client synchronization.
+	// 11. Response: Return a full board state snapshot for client synchronization.
 	return b.buildResurrectionBoardState(matchID, battleArena, req), nil
+}
+
+// validateSerializerVersion enforces the Crash-Early schema-version guard (WP-D2 / audit R7).
+// It returns a descriptive error when the blob's embedded serializer_version is absent (zero)
+// or does not match the engine's current schema, preventing silent mis-deserialization.
+func validateSerializerVersion(found int) error {
+	want := upsilonserializer.CurrentSerializerVersion
+	if found == 0 {
+		return fmt.Errorf(
+			"resurrection refused: serializer_version is absent in the persisted blob — "+
+				"this blob was written before schema versioning was introduced; "+
+				"expected serializer_version=%d, got 0 (treat as stale, conclude the match server-side)",
+			want,
+		)
+	}
+	if found != want {
+		return fmt.Errorf(
+			"resurrection refused: serializer_version mismatch — "+
+				"expected %d, got %d; the persisted blob shape is incompatible with the current engine",
+			want, found,
+		)
+	}
+	return nil
 }
 
 // validateResurrectRequest checks for missing fields and malformed UUIDs.

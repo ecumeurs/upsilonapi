@@ -5,10 +5,12 @@
 package bridge
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
+	"github.com/ecumeurs/upsilonserializer"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,15 +35,16 @@ func boardStateToResurrectReq(matchID uuid.UUID, callbackURL string, players []a
 		turns[i] = api.ResurrectTurn{EntityID: t.EntityID, Delay: t.Delay}
 	}
 
-	// 3. Final Construction: Assemble the full recovery payload.
+	// 3. Final Construction: Assemble the full recovery payload, including the embedded schema version.
 	return api.ArenaResurrectRequest{
-		MatchID:         matchID.String(),
-		CallbackURL:     callbackURL,
-		Players:         players,
-		Grid:            api.ResurrectGrid{Width: bs.Grid.Width, Height: bs.Grid.Height, MaxHeight: bs.Grid.MaxHeight, Cells: cells},
-		Turns:           turns,
-		CurrentEntityID: bs.CurrentEntityID,
-		Version:         bs.Version,
+		MatchID:           matchID.String(),
+		CallbackURL:       callbackURL,
+		Players:           players,
+		Grid:              api.ResurrectGrid{Width: bs.Grid.Width, Height: bs.Grid.Height, MaxHeight: bs.Grid.MaxHeight, Cells: cells},
+		Turns:             turns,
+		CurrentEntityID:   bs.CurrentEntityID,
+		Version:           bs.Version,
+		SerializerVersion: bs.SerializerVersion,
 	}
 }
 
@@ -167,4 +170,114 @@ func countObstacles(grid api.Grid) int {
 		}
 	}
 	return count
+}
+
+// ── Serializer version guard tests (WP-D2 / audit risk R7) ───────────────────
+
+// TestBoardState_StampsSerializerVersion verifies that NewBoardState embeds the current schema version.
+func TestBoardState_StampsSerializerVersion(t *testing.T) {
+	// 1. Setup: Start a real arena and capture its first board state.
+	b := Get()
+	matchID := uuid.New()
+	players := getResurrectionTestPlayers()
+
+	_, g, entities, _, ts, version, err := b.StartArena(api.ArenaStartRequest{
+		MatchID: matchID.String(), CallbackURL: "http://localhost/webhook", Players: players,
+	})
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
+
+	// 2. Snapshot: Build a BoardState from the live engine.
+	bs := api.NewBoardState(matchID, g, entities, players, ts, time.Now(), time.Now().Add(30*time.Second), 0, version, nil)
+
+	// 3. Assertion: The stamped version must match the canonical constant.
+	assert.Equal(t, upsilonserializer.CurrentSerializerVersion, bs.SerializerVersion,
+		"NewBoardState must stamp SerializerVersion=%d into every blob", upsilonserializer.CurrentSerializerVersion)
+
+	b.DestroyArena(matchID)
+}
+
+// TestResurrectArena_AbsentVersion_Rejected verifies that a blob with no serializer_version (zero) is refused.
+func TestResurrectArena_AbsentVersion_Rejected(t *testing.T) {
+	// 1. Setup: Build a valid resurrection request but omit the serializer version (simulates a
+	//    blob persisted before versioning was introduced — the field unmarshals as zero).
+	b := Get()
+	matchID := uuid.New()
+	players := getResurrectionTestPlayers()
+
+	_, g, entities, _, ts, version, err := b.StartArena(api.ArenaStartRequest{
+		MatchID: matchID.String(), CallbackURL: "http://localhost/webhook", Players: players,
+	})
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
+
+	bs := api.NewBoardState(matchID, g, entities, players, ts, time.Now(), time.Now().Add(30*time.Second), 0, version, nil)
+	b.DestroyArena(matchID)
+	time.Sleep(100 * time.Millisecond)
+
+	req := boardStateToResurrectReq(matchID, "http://localhost/webhook", players, bs)
+	// 2. Tamper: Erase the serializer version to simulate an unversioned legacy blob.
+	req.SerializerVersion = 0
+
+	// 3. Execution: Resurrection must be refused with a descriptive error.
+	_, err = b.ResurrectArena(req)
+	require.Error(t, err, "resurrection of an unversioned blob must return an explicit error")
+	assert.True(t, strings.Contains(err.Error(), "serializer_version is absent"),
+		"error must mention absent serializer_version; got: %s", err.Error())
+}
+
+// TestResurrectArena_WrongVersion_Rejected verifies that a blob with a mismatched serializer_version is refused.
+func TestResurrectArena_WrongVersion_Rejected(t *testing.T) {
+	// 1. Setup: Build a valid resurrection request, then set an incompatible schema version.
+	b := Get()
+	matchID := uuid.New()
+	players := getResurrectionTestPlayers()
+
+	_, g, entities, _, ts, version, err := b.StartArena(api.ArenaStartRequest{
+		MatchID: matchID.String(), CallbackURL: "http://localhost/webhook", Players: players,
+	})
+	require.NoError(t, err)
+	time.Sleep(150 * time.Millisecond)
+
+	bs := api.NewBoardState(matchID, g, entities, players, ts, time.Now(), time.Now().Add(30*time.Second), 0, version, nil)
+	b.DestroyArena(matchID)
+	time.Sleep(100 * time.Millisecond)
+
+	req := boardStateToResurrectReq(matchID, "http://localhost/webhook", players, bs)
+	// 2. Tamper: Inject a future/unknown schema version (CurrentSerializerVersion + 99).
+	req.SerializerVersion = upsilonserializer.CurrentSerializerVersion + 99
+
+	// 3. Execution: Resurrection must be refused with a clear version-mismatch error.
+	_, err = b.ResurrectArena(req)
+	require.Error(t, err, "resurrection of an incompatible-version blob must return an explicit error")
+	assert.True(t, strings.Contains(err.Error(), "serializer_version mismatch"),
+		"error must report serializer_version mismatch; got: %s", err.Error())
+}
+
+// TestResurrectArena_CorrectVersion_Succeeds verifies that round-trip resurrection still works for current-version blobs.
+func TestResurrectArena_CorrectVersion_Succeeds(t *testing.T) {
+	// 1. Setup: Full start → snapshot → destroy → resurrect cycle with an unmodified blob.
+	b := Get()
+	matchID := uuid.New()
+	players := getResurrectionTestPlayers()
+
+	_, g, entities, _, ts, version, err := b.StartArena(api.ArenaStartRequest{
+		MatchID: matchID.String(), CallbackURL: "http://localhost/webhook", Players: players,
+	})
+	require.NoError(t, err)
+	time.Sleep(300 * time.Millisecond)
+
+	bs := api.NewBoardState(matchID, g, entities, players, ts, time.Now(), time.Now().Add(30*time.Second), 0, version, nil)
+	b.DestroyArena(matchID)
+	time.Sleep(200 * time.Millisecond)
+
+	req := boardStateToResurrectReq(matchID, "http://localhost/webhook", players, bs)
+
+	// 2. Execution: A blob with the correct serializer_version must be accepted.
+	newBS, err := b.ResurrectArena(req)
+	require.NoError(t, err, "resurrection must succeed when serializer_version matches current schema")
+	assert.Equal(t, upsilonserializer.CurrentSerializerVersion, newBS.SerializerVersion,
+		"resurrected board state must carry the current serializer version")
+
+	b.DestroyArena(matchID)
 }
