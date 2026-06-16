@@ -10,8 +10,7 @@ tags: [api, shop, catalog, iss-074]
 parents:
   - [[upsilonbattle:mec_credit_spending_shop]]
   - [[upsilontypes:entity_shop_item]]
-dependents:
-  - [[battleui:ui_shop]]
+dependents: []
 ---
 
 # New Atom

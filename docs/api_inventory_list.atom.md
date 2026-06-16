@@ -8,8 +8,7 @@ parents:
 type: API
 version: 2.0
 human_name: Player Inventory List API
-dependents:
-  - [[battleui:ui_inventory]]
+dependents: []
 layer: ARCHITECTURE
 priority: 5
 ---

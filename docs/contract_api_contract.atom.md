@@ -6,8 +6,7 @@ layer: BUSINESS
 version: 1.0
 priority: 1
 tags: [governance, contract, api]
-dependents:
-  - [[rule_api_bridge_orchestration]]
+dependents: []
 type: CONTRACT
 parents:
   - [[shared:contract_upsilon_contract]]

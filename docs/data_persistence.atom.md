@@ -7,10 +7,9 @@ version: 1.0
 status: STABLE
 priority: 5
 tags: [database, postgresql, state]
-parents: []
-dependents:
-  - [[upsilonbattle:entity_game_match]]
-  - [[upsilonbattle:entity_users]]
+parents:
+  - [[req_tech_debt_backlog]]
+dependents: []
 ---
 # PostgreSQL Database Persistence
 

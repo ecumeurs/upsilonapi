@@ -9,8 +9,7 @@ priority: 5
 tags: [infra, seed, admin]
 parents:
   - [[upsilonbattle:entity_player]]
-dependents:
-  - [[shared:uc_admin_login]]
+dependents: []
 ---
 # Administrator Account Seeding Requirement
 

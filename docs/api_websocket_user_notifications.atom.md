@@ -10,8 +10,7 @@ tags: [websocket, matchmaking, notifications]
 parents:
   - [[api_matchmaking]]
   - [[api_websocket_game_events]]
-dependents:
-  - [[battleui:ui_dashboard_matchmaking]]
+dependents: []
 has_tests: true
 linked_codes:
   - battleui/resources/js/Components/Dashboard/EngagementHub.vue:88
