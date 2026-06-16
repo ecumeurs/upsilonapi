@@ -16,12 +16,13 @@ import (
 )
 
 // TestMapping_ZoneAndEffect verifies that skill area-of-effect and payload properties are correctly hydrated in the engine.
+// The zone pattern "Circle:3" is a valid AoE pattern and exercises the parameterised path in ZoneProperty.Set.
 func TestMapping_ZoneAndEffect(t *testing.T) {
-	// 1. Setup Phase: Initialize the bridge and define a skill with specific Zone and Effect properties.
+	// 1. Setup Phase: Initialize the bridge and define a skill with a Circle AoE zone and an Effect property.
 	b := Get()
 	matchID := uuid.New()
-	
-	zoneName := "cross"
+
+	zoneName := "Circle:3"
 	req := createTestRequest(matchID)
 	req.Players[0].Entities[0].EquippedSkills = []api.EquippedSkill{
 		{
@@ -40,13 +41,16 @@ func TestMapping_ZoneAndEffect(t *testing.T) {
 	require.NotEmpty(t, entities[0].Skills)
 	var engineSkill *api.EquippedSkill
 	for _, s := range api.NewEntity(entities[0]).EquippedSkills {
-		if s.Name == "Fireball" { engineSkill = &s; break }
+		if s.Name == "Fireball" {
+			engineSkill = &s
+			break
+		}
 	}
 
-	// 4. Verification: Confirm the 'cross' zone and 'damage' effect were correctly mapped.
+	// 4. Verification: Confirm the "Circle:3" zone and 'damage' effect were correctly mapped.
 	require.NotNil(t, engineSkill, "skill 'Fireball' must exist in the engine")
-	assert.Equal(t, "cross", *engineSkill.Zone, "zone pattern must be preserved in the engine state")
+	assert.Equal(t, "Circle:3", *engineSkill.Zone, "zone pattern must be preserved in the engine state")
 	assert.Equal(t, 10, *engineSkill.Effect.Data[property.Damage.String()].Value, "effect properties must be correctly serialized to the engine")
-	
+
 	b.DestroyArena(matchID)
 }
