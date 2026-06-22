@@ -12,7 +12,7 @@ parents:
 dependents: []
 ---
 
-# New Atom
+# Profile Credit Balance API
 
 ## INTENT
 To provide a lightweight, dedicated endpoint for retrieving a player's current credit balance for shop display and UI economy widgets.

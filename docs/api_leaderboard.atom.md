@@ -11,7 +11,7 @@ parents:
   - [[battleui:ui_leaderboard]]
 ---
 
-# New Atom
+# Leaderboard API Contract
 
 ## INTENT
 Define the data contract for fetching leaderboard rankings.

@@ -10,7 +10,10 @@ tags: [security, admin, privacy]
 parents:
   - [[shared:req_security]]
   - [[upsilonbattle:entity_player]]
-dependents: []
+dependents:
+  - [[api_shop_item_admin_crud]]
+  - [[api_skill_template_admin_crud]]
+  - [[uc_admin_login]]
 ---
 # Administrator Access Restriction Rule
 

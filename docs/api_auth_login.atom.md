@@ -8,8 +8,10 @@ status: STABLE
 priority: 5
 tags: [auth, login, api]
 parents:
-  - [[shared:uc_player_login]]
-dependents: []
+  - [[battleui:uc_player_login]]
+dependents:
+  - [[battleui:uc_player_login]]
+  - [[upsiloncli:mechanic_cli_sensitive_data_masking]]
 ---
 # Player Login API
 

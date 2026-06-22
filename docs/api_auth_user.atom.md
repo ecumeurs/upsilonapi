@@ -6,13 +6,14 @@ layer: ARCHITECTURE
 tags: [api, auth, account, gdpr]
 parents:
   - [[shared:requirement_customer_user_account]]
-dependents: []
+dependents:
+  - [[upsiloncli:mechanic_cli_sensitive_data_masking]]
 human_name: User Authentication & Account API
 priority: 5
 version: 1.0
 ---
 
-# New Atom
+# User Authentication & Account API
 
 ## INTENT
 To provide a centralized technical specification for all user authentication, identity synchronization, and account lifecycle endpoints.

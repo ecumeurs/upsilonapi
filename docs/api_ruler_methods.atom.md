@@ -11,6 +11,8 @@ parents:
   - [[domain_ruler_state]]
 dependents:
   - [[api_controller_methods]]
+  - [[upsilonbattle:mech_controller_communication_sequence]]
+  - [[upsilonbattle:rule_battle_readiness]]
 ---
 # Ruler Message Methods API
 

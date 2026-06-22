@@ -12,7 +12,7 @@ type: API
 priority: 3
 ---
 
-# New Atom
+# API Help & Discovery Endpoint
 
 ## INTENT
 To provide a live, code-driven index of the entire system surface (REST & WebSockets) by introspecting the Laravel router and ATD dependency graph.

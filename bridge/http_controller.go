@@ -265,7 +265,7 @@ func (hc *HTTPController) handleBoardStateReply(ctx actor.ReplyContext) {
 		return
 	}
 
-	// @spec-link [[mechanic_mech_arena_lifecycle]]
+	// @spec-link [[mechanic_arena_lifecycle]]
 	// @spec-link [[mech_webhook_delivery]]
 	// Synchronous delivery: the single HC actor goroutine serialises all webhook
 	// posts, guaranteeing ordered delivery and preventing stale-version races at

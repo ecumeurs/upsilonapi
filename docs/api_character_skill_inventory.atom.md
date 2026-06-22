@@ -13,7 +13,7 @@ parents:
 dependents: []
 ---
 
-# New Atom
+# Character Skill Inventory API
 
 ## INTENT
 To expose per-character skill acquisition (roll), equip, and unequip operations so players can build battle-ready skill loadouts within their slot limit.

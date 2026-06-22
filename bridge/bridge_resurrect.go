@@ -27,7 +27,7 @@ import (
 )
 
 // @spec-link [[api_go_battle_engine]]
-// @spec-link [[mechanic_mech_arena_lifecycle]]
+// @spec-link [[mechanic_arena_lifecycle]]
 
 // ResurrectArena rebuilds a crashed arena from a persisted board state (ISS-054).
 func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardState, error) {

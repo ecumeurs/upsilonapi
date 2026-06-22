@@ -1,7 +1,7 @@
 package bridge
 
 // @spec-link [[rule_team_mechanics]]
-// @spec-link [[mec_item_buff_application]]
+// @spec-link [[mechanic_item_buff_application]]
 // @spec-link [[api_character_skill_inventory]]
 
 import (

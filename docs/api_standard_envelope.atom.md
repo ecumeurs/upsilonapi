@@ -10,6 +10,7 @@ tags: [api, json, envelope, standard]
 parents:
   - [[api_request_id]]
 dependents:
+  - [[shared:rule_tracing_logging]]
   - [[api_auth_logout]]
   - [[api_auth_register]]
   - [[api_battle_proxy]]
@@ -19,6 +20,7 @@ dependents:
   - [[api_go_battle_start]]
   - [[api_go_webhook_callback]]
   - [[api_profile_export]]
+  - [[api_skill_generation]]
 ---
 # Standard JSON Message Envelope
 

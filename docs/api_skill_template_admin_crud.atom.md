@@ -5,7 +5,7 @@ layer: ARCHITECTURE
 priority: 5
 version: 2.0
 parents:
-  - [[rule_admin_content_authority]]
+  - [[rule_admin_access_restriction]]
   - [[upsilontypes:entity_skill_template]]
 dependents: []
 tags: [api, skills, admin, crud, iss-086]
@@ -13,7 +13,7 @@ human_name: Admin Skill Template CRUD API
 type: API
 ---
 
-# New Atom
+# Admin Skill Template CRUD API
 
 ## INTENT
 To give admins full CRUD control over the skill template registry — enabling content management without code deploys.

@@ -8,13 +8,14 @@ type: API
 priority: 5
 tags: [api, shop, purchase, iss-074]
 parents:
-  - [[upsilonbattle:entity_player_credits]]
-  - [[upsilonbattle:entity_player_inventory]]
-  - [[upsilonbattle:mec_credit_spending_shop]]
-dependents: []
+  - [[entity_player_credits]]
+  - [[entity_player_inventory]]
+  - [[mechanic_shop_inventory_system]]
+dependents:
+  - [[battleui:ui_shop]]
 ---
 
-# New Atom
+# Shop Purchase API
 
 ## INTENT
 To deduct credits from a user's balance and add the purchased item to their inventory in a single transactional step. The only state-changing shop endpoint.

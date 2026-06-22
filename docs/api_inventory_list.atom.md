@@ -3,17 +3,18 @@ id: api_inventory_list
 status: STABLE
 tags: [api, inventory, iss-074]
 parents:
-  - [[upsilonbattle:entity_player_inventory]]
-  - [[upsilonbattle:mec_shop_inventory_system]]
+  - [[entity_player_inventory]]
+  - [[mechanic_shop_inventory_system]]
 type: API
 version: 2.0
 human_name: Player Inventory List API
-dependents: []
+dependents:
+  - [[battleui:ui_inventory]]
 layer: ARCHITECTURE
 priority: 5
 ---
 
-# New Atom
+# Player Inventory List API
 
 ## INTENT
 To expose the authenticated user's owned items, with each row annotated by its current equip status (which character, if any, has it bound). Read-only.

@@ -34,7 +34,7 @@ Returns a `SkillGenerateResponse` containing:
 
 ## TECHNICAL INTERFACE
 - **API Endpoint:** `POST /v1/skills/generate`
-- **Code Tag:** `@spec-link [[api_skill_generation]]`
+- **Code Tag:** `@spec-link [[upsilontypes:api_skill_generation]]`
 - **Go Handler:** `handler.HandleSkillGenerate`
 - **Request Type:** `skillgenerator.GenerateRequest`
 - **Response Type:** `api.SkillGenerateResponse`

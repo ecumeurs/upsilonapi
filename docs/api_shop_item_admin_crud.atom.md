@@ -2,7 +2,7 @@
 id: api_shop_item_admin_crud
 status: STABLE
 parents:
-  - [[rule_admin_content_authority]]
+  - [[rule_admin_access_restriction]]
   - [[upsilontypes:entity_shop_item]]
 dependents: []
 type: API
@@ -13,7 +13,7 @@ tags: [api, shop, admin, crud, iss-086]
 human_name: Admin Shop Item CRUD API
 ---
 
-# New Atom
+# Admin Shop Item CRUD API
 
 ## INTENT
 To give admins full CRUD control over the shop item catalog — enabling availability toggling, pricing changes, and addition of exotic items without code deploys.

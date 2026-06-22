@@ -8,8 +8,10 @@ status: STABLE
 priority: 5
 tags: [database, postgresql, state]
 parents:
-  - [[req_tech_debt_backlog]]
-dependents: []
+  - [[shared:req_tech_debt_backlog]]
+dependents:
+  - [[upsilonbattle:entity_game_match]]
+  - [[upsilonbattle:entity_users]]
 ---
 # PostgreSQL Database Persistence
 
@@ -19,10 +21,10 @@ Serve as the centralized, persistent source of truth for accounts, characters, a
 ## THE RULE / LOGIC
 - Technology Stack: Must be strictly deployed on PostgreSQL.
 - Primary Game Logic Entities:
-  - [[entity_users]] (authentication credentials, role-based access, win/loss metrics, WebSocket channel keys).
-  - [[entity_character]] (HP, Movement, Attack, Defense stats linked to a User via player_id, includes initial_movement for progression tracking).
-  - [[entity_game_match]] (matches historical state, game_state_cache, grid_cache, turn tracking, version for deduplication).
-  - [[entity_match_participants]] (junction table linking users/AI to matches, supports nullable player_id for PvE modes).
+  - [[upsilonbattle:entity_users]] (authentication credentials, role-based access, win/loss metrics, WebSocket channel keys).
+  - [[upsilontypes:entity_character]] (HP, Movement, Attack, Defense stats linked to a User via player_id, includes initial_movement for progression tracking).
+  - [[upsilonbattle:entity_game_match]] (matches historical state, game_state_cache, grid_cache, turn tracking, version for deduplication).
+  - [[upsilonbattle:entity_match_participants]] (junction table linking users/AI to matches, supports nullable player_id for PvE modes).
   - Matchmaking Queues (active queues with JSON-based character selection, game_mode specification).
 - Infrastructure Tables (Laravel-specific, not game logic):
   - Session management (sessions, cache, cache_locks)

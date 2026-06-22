@@ -42,7 +42,7 @@ To facilitate communication between the player and the core game engine for acti
   - **URI:** `/api/v1/game/{match_id}/forfeit`
   - **Verb:** `POST`
   - **Intent:** Sudden Concession
-  - **Logic:** Defined in [[rule_forfeit_battle]].
+  - **Logic:** Defined in [[upsilonbattle:rule_forfeit_battle]].
   - **Output:** Standard success envelope.
 
 ## TECHNICAL INTERFACE (The Bridge)

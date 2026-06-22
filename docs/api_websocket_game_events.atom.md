@@ -14,7 +14,7 @@ tags: websocket,game,events,real-time
 human_name: WebSocket Game Events Registry
 ---
 
-# New Atom
+# WebSocket Game Events Registry
 
 ## INTENT
 To define the real-time event registry and payload contracts for game synchronization and player notifications, prioritizing private user streams for tactical integrity.

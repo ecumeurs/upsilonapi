@@ -1,5 +1,5 @@
 ---
-id: api_bridge_orchestration
+id: rule_api_bridge_orchestration
 status: DRAFT
 priority: 2
 parents:
@@ -12,7 +12,7 @@ human_name: "API Bridge Orchestration"
 layer: BUSINESS
 ---
 
-# New Atom
+# API Bridge Orchestration
 
 ## INTENT
 Define the orchestration logic for bridging HTTP requests to the battle engine.
@@ -23,7 +23,7 @@ Define the orchestration logic for bridging HTTP requests to the battle engine.
 - **Event Forwarding:** Capture engine events and push them to the registered webhook callback.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[api_bridge_orchestration]]`
+- **Code Tag:** `@spec-link [[rule_api_bridge_orchestration]]`
 
 ## EXPECTATION
 The API must maintain a 1:1 mapping between HTTP requests and engine actor states for every active arena.

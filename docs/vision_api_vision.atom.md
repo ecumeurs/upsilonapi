@@ -12,7 +12,7 @@ human_name: UpsilonAPI Vision
 dependents: []
 ---
 
-# New Atom
+# UpsilonAPI Vision
 
 ## INTENT
 Define the vision for the UpsilonAPI as the high-performance orchestration bridge for the tactical engine.
@@ -25,7 +25,7 @@ Define the vision for the UpsilonAPI as the high-performance orchestration bridg
   - **Real-time Flow:** Enable low-latency communication via WebSockets and webhooks for live combat visualization.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[api_vision]]`
-- **Related Atoms:** `[[module_upsilonapi]]`, `[[shared:upsilon_vision]]`
+- **Code Tag:** `@spec-link [[vision_api_vision]]`
+- **Related Atoms:** `[[module_upsilonapi]]`, `[[shared:vision_upsilon_vision]]`
 
 ## EXPECTATION

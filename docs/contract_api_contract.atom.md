@@ -6,13 +6,14 @@ layer: BUSINESS
 version: 1.0
 priority: 1
 tags: [governance, contract, api]
-dependents: []
+dependents:
+  - [[rule_api_bridge_orchestration]]
 type: CONTRACT
 parents:
   - [[shared:contract_upsilon_contract]]
 ---
 
-# New Atom
+# UpsilonAPI Contract
 
 ## INTENT
 Establish the implementation standards and constraints for the UpsilonAPI project.
@@ -25,7 +26,7 @@ Establish the implementation standards and constraints for the UpsilonAPI projec
 - **Error Handling:** Propagate `error_key` codes from the engine to the client without transformation.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[api_contract]]`
-- **Related Atoms:** `[[api_standard_envelope]]`, `[[shared:upsilon_contract]]`
+- **Code Tag:** `@spec-link [[contract_api_contract]]`
+- **Related Atoms:** `[[api_standard_envelope]]`, `[[shared:contract_upsilon_contract]]`
 
 ## EXPECTATION

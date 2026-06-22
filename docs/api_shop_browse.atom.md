@@ -8,12 +8,13 @@ human_name: Shop Catalog Browse API
 type: API
 tags: [api, shop, catalog, iss-074]
 parents:
-  - [[upsilonbattle:mec_credit_spending_shop]]
+  - [[mechanic_shop_inventory_system]]
   - [[upsilontypes:entity_shop_item]]
-dependents: []
+dependents:
+  - [[battleui:ui_shop]]
 ---
 
-# New Atom
+# Shop Catalog Browse API
 
 ## INTENT
 To expose the shop catalog (all `available=true` rows of `shop_items`) so authenticated users can browse what's purchasable. Read-only.
@@ -37,4 +38,4 @@ To expose the shop catalog (all `available=true` rows of `shop_items`) so authen
 - Authenticated GET returns 200 with array of 3 items in V2.0.
 - Unauthenticated GET returns 401.
 - Items with `available=false` are excluded.
-- Response envelope conforms to `[[shared:api_standard_envelope]]`.
+- Response envelope conforms to `[[api_standard_envelope]]`.

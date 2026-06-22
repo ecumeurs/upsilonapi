@@ -8,13 +8,10 @@ status: STABLE
 priority: 5
 tags: []
 parents:
-  - [[req_tech_debt_backlog]]
+  - [[shared:req_tech_debt_backlog]]
 dependents:
   - [[api_ruler_methods]]
-  - [[domain_ruler_state_action_validation]]
-  - [[domain_ruler_state_data_custody]]
-  - [[domain_ruler_state_game_states]]
-  - [[domain_ruler_state_technical_interface]]
+  - [[upsilonbattle:rule_turn_clock]]
 ---
 # Ruler State Machine Domain
 

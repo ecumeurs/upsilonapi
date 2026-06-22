@@ -57,5 +57,5 @@ To view and modify character entities, including statistical progression and cos
 ## EXPECTATION (For Testing)
 - Requesting character list -> Return array of characters.
 - Upgrading beyond available points (wins) -> Return 400 Bad Request.
-- Upgrading that violates [[rule_progression]] (e.g., movement limit) -> Return 400 Bad Request.
+- Upgrading that violates [[shared:rule_progression]] (e.g., movement limit) -> Return 400 Bad Request.
 - Rerolling after account is "Stable" -> Return 403 Forbidden.

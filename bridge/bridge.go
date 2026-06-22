@@ -14,7 +14,7 @@ import (
 )
 
 // @spec-link [[api_go_battle_engine]]
-// @spec-link [[mechanic_mech_arena_lifecycle]]
+// @spec-link [[mechanic_arena_lifecycle]]
 
 // ArenaBridge manages the set of active battle arenas.
 // It is a thread-safe singleton that maps match IDs to BattleArena instances.

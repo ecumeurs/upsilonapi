@@ -9,7 +9,8 @@ priority: 5
 tags: [docker, infrastructure, mvp]
 parents:
   - [[upsilonbattle:module_backend]]
-dependents: []
+dependents:
+  - [[upsiloncli:watch_services]]
 ---
 # MVP Docker Infrastructure
 

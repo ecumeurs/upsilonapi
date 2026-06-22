@@ -12,7 +12,7 @@ type: API
 version: 2.0
 ---
 
-# New Atom
+# Skill Template Browse API
 
 ## INTENT
 To expose the player-facing skill template catalog so authenticated users can browse which skills exist and inspect their stats before rolling.
