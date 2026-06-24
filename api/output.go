@@ -116,21 +116,21 @@ type ActionFeedback struct {
 
 // BoardState represents the current state of the board.
 type BoardState struct {
-	Players           []Player        `json:"players"` // Consolidated roster
-	Grid              Grid            `json:"grid"`
-	Turn              []Turn          `json:"turn"`
-	CurrentPlayerID   string          `json:"current_player_id"`
-	CurrentEntityID   string          `json:"current_entity_id"`
-	Timeout           time.Time       `json:"timeout"`
-	StartTime         time.Time       `json:"start_time"`
-	WinnerTeamID      *int            `json:"winner_team_id"`
-	Action            *ActionFeedback `json:"action,omitempty"`
-	Version           int64           `json:"version"`
+	Players         []Player        `json:"players"` // Consolidated roster
+	Grid            Grid            `json:"grid"`
+	Turn            []Turn          `json:"turn"`
+	CurrentPlayerID string          `json:"current_player_id"`
+	CurrentEntityID string          `json:"current_entity_id"`
+	Timeout         time.Time       `json:"timeout"`
+	StartTime       time.Time       `json:"start_time"`
+	WinnerTeamID    *int            `json:"winner_team_id"`
+	Action          *ActionFeedback `json:"action,omitempty"`
+	Version         int64           `json:"version"`
 	// SerializerVersion is the embedded schema version stamped into every persisted blob.
 	// It must match upsilonserializer.CurrentSerializerVersion on resurrection; a mismatch
 	// or absent value (zero) triggers an explicit Crash-Early error rather than a silent
 	// mis-deserialization.
-	SerializerVersion int             `json:"serializer_version"`
+	SerializerVersion int `json:"serializer_version"`
 }
 
 // ArenaEvent is the payload for the webhook
@@ -208,25 +208,54 @@ func NewEntity(ent entity.Entity) Entity {
 	buffs, items := extractEntityBuffsAndItems(ent)
 	// 4. Skillset Projection: Convert every registered engine skill into its API DTO form.
 	skills := extractEntitySkills(ent.Skills)
-	// 5. Final Assembly: Bundle all resolved fields into the final serializable Entity.
+	// 5. Channeling Projection: Resolve the in-flight cast (if any) into a client DTO.
+	casting := convertCastingState(ent)
+	// 6. Final Assembly: Bundle all resolved fields into the final serializable Entity.
 	return Entity{
-		ID: ent.ID.String(),
-		PlayerID: ent.ControllerID.String(),
-		Team: team,
-		Name: ent.Name,
-		HP: hp,
-		MaxHP: maxHP,
-		Attack: ent.GetPropertyI(property.Attack).I(),
-		Defense: ent.GetPropertyI(property.Defense).I(),
-		Move: move,
-		MaxMove: maxMove,
-		Position: Position{X: ent.Position.X, Y: ent.Position.Y},
-		Buffs: buffs,
-		EquippedItems: items,
+		ID:             ent.ID.String(),
+		PlayerID:       ent.ControllerID.String(),
+		Team:           team,
+		Name:           ent.Name,
+		HP:             hp,
+		MaxHP:          maxHP,
+		Attack:         ent.GetPropertyI(property.Attack).I(),
+		Defense:        ent.GetPropertyI(property.Defense).I(),
+		Move:           move,
+		MaxMove:        maxMove,
+		Position:       Position{X: ent.Position.X, Y: ent.Position.Y},
+		Buffs:          buffs,
+		EquippedItems:  items,
 		EquippedSkills: skills,
-		IsSelf: false,
-		Dead: hp <= 0,
+		IsSelf:         false,
+		Dead:           hp <= 0,
+		IsCasting:      casting,
 	}
+}
+
+// convertCastingState projects an engine entity's channeling state into the client
+// Casting DTO, resolving the channeled skill's name for the "Channeling: X"
+// indicator. Returns nil when the entity is not channeling.
+// @spec-link [[upsilonbattle:mechanic_channeling_mechanic]]
+func convertCastingState(ent entity.Entity) *Casting {
+	cs := ent.IsCasting
+	if cs == nil {
+		return nil
+	}
+
+	c := &Casting{
+		SkillID:      cs.SkillID.String(),
+		Interruption: cs.Interruption,
+	}
+	if sk, ok := ent.Skills[cs.SkillID]; ok {
+		c.SkillName = sk.Name
+	}
+	if cs.TargetEntity != uuid.Nil {
+		c.TargetEntity = cs.TargetEntity.String()
+	}
+	if cs.TargetPos != nil {
+		c.TargetTile = &Position{X: cs.TargetPos.X, Y: cs.TargetPos.Y}
+	}
+	return c
 }
 
 // extractEntityStats is a helper to retrieve HP and Movement counters with full documentation.
@@ -273,8 +302,8 @@ func extractEntityBuffsAndItems(ent entity.Entity) ([]Buff, []EquippedItem) {
 		}
 		// 2.3 Default: Map remaining blocks as standard property-modifying buffs.
 		buffs = append(buffs, Buff{
-			OriginID: b.OriginEntityID.String(),
-			Forever: b.Forever,
+			OriginID:   b.OriginEntityID.String(),
+			Forever:    b.Forever,
 			Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
 		})
 	}
@@ -297,11 +326,11 @@ func convertBuffToItem(b property.TemporaryProperties) EquippedItem {
 	}
 	// 3. Construction: Return the Equipment DTO with its properties and effects.
 	return EquippedItem{
-		ItemID: b.OriginEntityID.String(),
-		Name: "Equipped Item",
+		ItemID:     b.OriginEntityID.String(),
+		Name:       "Equipped Item",
 		Properties: Flex[PropertyMap]{Data: convertPropertyMap(b.Properties)},
-		Effect: Flex[PropertyMap]{Data: effProps},
-		Zone: zone,
+		Effect:     Flex[PropertyMap]{Data: effProps},
+		Zone:       zone,
 	}
 }
 
@@ -318,13 +347,13 @@ func extractEntitySkills(skills map[uuid.UUID]skill.Skill) []EquippedSkill {
 		}
 		// 2.2 DTO Assembly: Map behavior, costs, and effects into the skill DTO.
 		res = append(res, EquippedSkill{
-			SkillID: s.ID.String(),
-			Name: s.Name,
-			Behavior: behaviorName(def.BehaviorType(s.Behavior.Get().(string))),
+			SkillID:   s.ID.String(),
+			Name:      s.Name,
+			Behavior:  behaviorName(def.BehaviorType(s.Behavior.Get().(string))),
 			Targeting: Flex[PropertyMap]{Data: convertPropertyMap(s.Targeting)},
-			Costs: Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
-			Effect: Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
-			Zone: zone,
+			Costs:     Flex[PropertyMap]{Data: convertPropertyMap(s.Costs)},
+			Effect:    Flex[PropertyMap]{Data: convertPropertySlice(s.Effect.Properties)},
+			Zone:      zone,
 		})
 	}
 	return res
@@ -451,7 +480,9 @@ func resolveSurfaceCell(g *grid.Grid, x int, y int, charMap map[uuid.UUID]bool) 
 	z := g.TopMostCellAt(x, y)
 	cl, ok := g.CellAt(position.New(x, y, z))
 	// 2. Existence Check: If cell is missing from map, return empty default.
-	if !ok { return Cell{} }
+	if !ok {
+		return Cell{}
+	}
 	// 3. Occupancy Search: Find the first character ID present at the surface level.
 	var charID string
 	for _, eid := range cl.EntityIDs {
@@ -479,7 +510,9 @@ func mapEntities(entities []entity.Entity, currentTurn uuid.UUID, bs *BoardState
 		apiEntity := NewEntity(e)
 		eMap[e.ID] = apiEntity
 		// 2.3 Turn Tracking: Identify acting player for current initiative slot.
-		if e.ID == currentTurn { bs.CurrentPlayerID = e.ControllerID.String() }
+		if e.ID == currentTurn {
+			bs.CurrentPlayerID = e.ControllerID.String()
+		}
 	}
 	return eToP, eMap
 }

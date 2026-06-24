@@ -88,12 +88,22 @@ func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
 // PropertyMap is a utility type for collections of named engine properties.
 type PropertyMap = map[string]PropertyDTO
 
-
-
 // Position represents a 2D coordinate on the engine grid.
 type Position struct {
 	X int `json:"x"`
 	Y int `json:"y"`
+}
+
+// Casting is the client-facing projection of a channeling entity's in-flight cast.
+// It carries enough for the UI to render a "Channeling: <skill>" indicator and an
+// interruption gauge, plus the target (an entity id for entity-target channels, a
+// tile for tile-target channels). @spec-link [[upsilonbattle:mechanic_channeling_mechanic]]
+type Casting struct {
+	SkillID      string    `json:"skill_id"`
+	SkillName    string    `json:"skill_name"`
+	TargetEntity string    `json:"target_entity,omitempty"` // entity-target channels
+	TargetTile   *Position `json:"target_tile,omitempty"`   // tile-target channels
+	Interruption int       `json:"interruption"`            // 0-100
 }
 
 // ArenaActionRequest defines the payload for executing a tactical engine action.
@@ -124,9 +134,12 @@ type Entity struct {
 	EquippedSkills []EquippedSkill `json:"equipped_skills"`
 	IsSelf         bool            `json:"is_self"`
 	Dead           bool            `json:"dead"`
-	Archetype      string          `json:"archetype,omitempty"` // per-entity override; inherits Player.Archetype when empty
-	Grade          string          `json:"grade,omitempty"`     // per-entity override; inherits Player grade when empty
-	AutoGen        bool            `json:"auto_gen,omitempty"`  // true → Go generates stats and skills from archetype+grade
+	// IsCasting is set while the entity is channeling a skill; nil/absent otherwise.
+	// @spec-link [[upsilonbattle:mechanic_channeling_mechanic]]
+	IsCasting *Casting `json:"is_casting,omitempty"`
+	Archetype string   `json:"archetype,omitempty"` // per-entity override; inherits Player.Archetype when empty
+	Grade     string   `json:"grade,omitempty"`     // per-entity override; inherits Player grade when empty
+	AutoGen   bool     `json:"auto_gen,omitempty"`  // true → Go generates stats and skills from archetype+grade
 }
 
 // EquippedSkill carries the tactical definition of an entity's ability.
@@ -167,8 +180,8 @@ type Player struct {
 	Entities  []Entity `json:"entities"`
 	Team      int      `json:"team"`
 	IA        bool     `json:"ia"`
-	Archetype string   `json:"archetype,omitempty"` // "fighter"|"ranger"|"support"|"sneak"|"" (random for IA)
-	Grade     string   `json:"grade,omitempty"`     // "I".."V"; derived from TotalWins when empty
+	Archetype string   `json:"archetype,omitempty"`  // "fighter"|"ranger"|"support"|"sneak"|"" (random for IA)
+	Grade     string   `json:"grade,omitempty"`      // "I".."V"; derived from TotalWins when empty
 	TotalWins int      `json:"total_wins,omitempty"` // used to derive Grade when Grade is empty
 }
 
@@ -186,23 +199,23 @@ type ArenaForfeitRequest struct {
 
 // ArenaResurrectRequest carries persisted board state from Laravel to rebuild a crashed arena.
 type ArenaResurrectRequest struct {
-	MatchID           string          `json:"match_id"`
-	CallbackURL       string          `json:"callback_url"`
-	Players           []Player        `json:"players"`
-	Grid              ResurrectGrid   `json:"grid"`
-	Turns             []ResurrectTurn `json:"turns"`
-	CurrentEntityID   string          `json:"current_entity_id"`
-	Version           int64           `json:"version"`
+	MatchID         string          `json:"match_id"`
+	CallbackURL     string          `json:"callback_url"`
+	Players         []Player        `json:"players"`
+	Grid            ResurrectGrid   `json:"grid"`
+	Turns           []ResurrectTurn `json:"turns"`
+	CurrentEntityID string          `json:"current_entity_id"`
+	Version         int64           `json:"version"`
 	// SerializerVersion must match upsilonserializer.CurrentSerializerVersion.
 	// Blobs written before versioning was introduced will carry zero (absent field),
 	// which is explicitly rejected by the resurrection guard.
-	SerializerVersion int             `json:"serializer_version"`
+	SerializerVersion int `json:"serializer_version"`
 }
 
 // ResurrectGrid is the 2D projection of the engine grid sufficient to rebuild pathfinding.
 type ResurrectGrid struct {
 	Width     int               `json:"width"`
-	Height    int               `json:"height"`   // Y dimension (Length)
+	Height    int               `json:"height"`     // Y dimension (Length)
 	MaxHeight int               `json:"max_height"` // Z ceiling
 	Cells     [][]ResurrectCell `json:"cells"`
 }
