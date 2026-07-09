@@ -12,6 +12,7 @@ COPY go.work go.work.sum ./
 COPY upsilonapi/go.mod upsilonapi/go.su[m] ./upsilonapi/
 COPY upsilonbattle/go.mod upsilonbattle/go.su[m] ./upsilonbattle/
 COPY upsiloncli/go.mod upsiloncli/go.su[m] ./upsiloncli/
+COPY upsilonhub/go.mod upsilonhub/go.su[m] ./upsilonhub/
 COPY upsilonmapdata/go.mod upsilonmapdata/go.su[m] ./upsilonmapdata/
 COPY upsilonmapmaker/go.mod upsilonmapmaker/go.su[m] ./upsilonmapmaker/
 COPY upsilonserializer/go.mod upsilonserializer/go.su[m] ./upsilonserializer/
