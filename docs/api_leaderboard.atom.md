@@ -8,7 +8,7 @@ version: 1.0
 human_name: Leaderboard API Contract
 priority: 5
 parents:
-  - [[battleui:ui_leaderboard]]
+  - [[upsilonbattleui:ui_leaderboard]]
 ---
 
 # Leaderboard API Contract

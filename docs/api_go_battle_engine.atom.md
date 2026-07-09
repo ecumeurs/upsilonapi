@@ -10,7 +10,7 @@ tags: [api, golang, rest, webhooks]
 parents:
   - [[api_standard_envelope]]
 dependents:
-  - [[battleui:module_upsilon_api_service]]
+  - [[upsilonbattleui:module_upsilon_api_service]]
   - [[api_arena_existence_check]]
   - [[api_go_battle_action]]
   - [[api_go_battle_forfeit]]

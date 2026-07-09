@@ -10,7 +10,7 @@ tags: [matchmaking, rule]
 parents:
   - [[shared:uc_matchmaking]]
 dependents:
-  - [[battleui:ui_dashboard_matchmaking]]
+  - [[upsilonbattleui:ui_dashboard_matchmaking]]
 ---
 
 # Single Queue Restriction

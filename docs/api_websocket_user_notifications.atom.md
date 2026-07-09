@@ -1,43 +1,41 @@
 ---
 id: api_websocket_user_notifications
-human_name: "WebSocket User Notifications (Private)"
+human_name: "Realtime User Notifications (Private)"
 type: API
 layer: ARCHITECTURE
-version: 1.1
+version: 2.0
 status: STABLE
 priority: 3
-tags: [websocket, matchmaking, notifications]
+tags: [sse, matchmaking, notifications]
 parents:
   - [[api_matchmaking]]
   - [[api_websocket_game_events]]
 dependents:
-  - [[battleui:ui_dashboard_matchmaking]]
+  - [[upsilonbattleui:ui_dashboard_matchmaking]]
 has_tests: true
 linked_codes:
-  - battleui/resources/js/Components/Dashboard/EngagementHub.vue:88
-  - battleui/tests/playwright/user_flows.spec.ts
+  - upsilonbattleui/src/Components/Dashboard/EngagementHub.vue:94
+  - upsilonbattleui/tests/playwright/user_flows.spec.ts
 ---
 
-# WebSocket User Notifications (Private)
+# Realtime User Notifications (Private)
 
 ## INTENT
 To provide authenticated, user-specific tactical state updates and account-level notifications.
 
 ## THE RULE / LOGIC
-1. **Channel Name**: `private-user.{ws_channel_key}`
-   - `{ws_channel_key}` is the pseudonym provided in the `UserResource`.
-2. **Authorization**: Only the owner of the user account can subscribe via Sanctum-authenticated `/broadcasting/auth`.
-3. **Core Tactical Events**:
-   - `match.found`: Triggered when a match is successfully paired.
+1. **Delivery**: on the user's bearer-authenticated SSE stream (`GET /api/v1/events`, [[api_websocket]]). The connection itself is the private channel — no channel-auth handshake, no per-user channel key. Client-side "channel" names (`user.{account_name}`) are local subscription bookkeeping only.
+2. **Core Tactical Events**:
+   - `match.found`: Triggered when a match is successfully paired (transient — no replay id).
    - `board.updated`: Triggered for every tactical state change (Movement, Combat, Pass).
-     - **Masking**: Tactical board events on this channel are surgically masked for the specific recipient.
-     - **Payload**: Includes unmarshalled `BoardState` DTOs.
+     - **Masking**: Tactical board events are surgically masked for the specific recipient before framing.
+     - **Payload**: one Standard Envelope with the recipient's `BoardState` view.
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **Channel Pattern:** `private-user.*`
+- **Stream:** `GET /api/v1/events`
 - **Code Tag:** `@spec-link [[api_websocket_user_notifications]]`
-- **Laravel Events:** `App\Events\MatchFound`, `App\Events\BoardUpdated`
+- **Server:** `upsilonhub/internal/gateway/sse` fan-out, `upsilonhub/internal/games/battle` MatchFound publisher
 
 ## EXPECTATION (For Testing)
-- User logs in -> Subscribes to `private-user.{id}` -> Signature valid.
-- Matchmaking pairs player -> Event `match.found` received by client.
+- User logs in -> opens the events stream -> connection LED goes private-linked.
+- Matchmaking pairs player -> Event `match.found` received by that user's stream only.

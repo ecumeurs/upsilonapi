@@ -12,7 +12,7 @@ parents:
   - [[entity_player_inventory]]
   - [[mechanic_shop_inventory_system]]
 dependents:
-  - [[battleui:ui_shop]]
+  - [[upsilonbattleui:ui_shop]]
 ---
 
 # Shop Purchase API

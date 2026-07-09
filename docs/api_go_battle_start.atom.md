@@ -11,7 +11,7 @@ parents:
   - [[api_go_battle_engine]]
   - [[api_standard_envelope]]
 dependents:
-  - [[battleui:entity_api_dtos]]
+  - [[upsilonbattleui:entity_api_dtos]]
 ---
 # UpsilonBattle Arena Start API
 

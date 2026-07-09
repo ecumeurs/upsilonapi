@@ -11,7 +11,7 @@ parents:
   - [[mechanic_shop_inventory_system]]
   - [[upsilontypes:entity_shop_item]]
 dependents:
-  - [[battleui:ui_shop]]
+  - [[upsilonbattleui:ui_shop]]
 ---
 
 # Shop Catalog Browse API

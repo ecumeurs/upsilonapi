@@ -11,8 +11,8 @@ parents:
   - [[entity_equipment_system]]
   - [[upsilonbattle:mechanic_three_slot_equipment_system]]
 dependents:
-  - [[battleui:ui_character_equipment_panel]]
-  - [[battleui:ui_inventory]]
+  - [[upsilonbattleui:ui_character_equipment_panel]]
+  - [[upsilonbattleui:ui_inventory]]
 ---
 
 # Equipment Management API

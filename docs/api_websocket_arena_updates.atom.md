@@ -1,47 +1,45 @@
 ---
 id: api_websocket_arena_updates
-human_name: "WebSocket Arena Updates (Customized)"
+human_name: "Realtime Arena Updates (Customized)"
 type: API
 layer: ARCHITECTURE
-version: 1.1
+version: 2.0
 status: STABLE
 priority: 2
-tags: [websocket, battle, tactical, updates]
+tags: [sse, battle, tactical, updates]
 parents:
   - [[api_battle_proxy]]
   - [[api_websocket_game_events]]
 dependents: []
 has_tests: true
 linked_codes:
-  - battleui/resources/js/Pages/BattleArena.vue:42
-  - battleui/resources/js/services/game.js:50
-  - battleui/tests/playwright/battle_arena.spec.ts
+  - upsilonbattleui/src/Pages/BattleArena.vue:111
+  - upsilonbattleui/src/services/game.js:72
+  - upsilonbattleui/tests/playwright/battle_arena.spec.ts
 ---
 
-# WebSocket Arena Updates (Private)
+# Realtime Arena Updates (Private)
 
 ## INTENT
-To synchronize tactical game state and turn changes to specific participants of a match in real-time on their private notification channels.
+To synchronize tactical game state and turn changes to specific participants of a match in real-time on their private streams.
 
 ## THE RULE / LOGIC
-1. **Channel Name**: `private-user.{ws_channel_key}`
-   - Tactical updates are sent to the private notification channel of each user.
-2. **Authorization**: Managed via `user.{key}` private channel rules (Sanctum/ws_channel_key).
-3. **Surgical Privacy Masking**:
-   - Updates are triggered per-user using `BoardStateResource`.
-   - **Own Characters**: Broadcast full `EntityDTO` details.
-   - **Opponent/AI Characters**: Mask sensitive fields (attributes, logic) while leaving public identifiers.
+1. **Delivery**: per-participant frames on each user's bearer-authenticated SSE stream ([[api_websocket]]); the stream is the private channel.
+2. **Surgical Privacy Masking**:
+   - Frames are rendered per-recipient from the applied board state.
+   - **Own Characters**: full `EntityDTO` details.
+   - **Opponent/AI Characters**: mask sensitive fields (attributes, logic) while leaving public identifiers.
    - **Identity Identification**: Pre-populates `is_self` and `current_player_is_self` based on the targeted user.
-4. **Core Events**:
-   - `board.updated`: Triggered by engine change.
-     - **Payload**: `{"match_id": "uuid", ...BoardState...}` (Flattened)
+3. **Core Events**:
+   - `board.updated` (also `game.started`, `turn.started`, `game.ended`, `game.forfeited`): engine event types pass through as SSE event names.
+     - **Payload**: `{"match_id": "uuid", ...BoardState...}` (Flattened), one Standard Envelope.
+   - **Replay**: frame id `{match_id}:{version}`; reconnect with `Last-Event-ID` resumes from the persisted snapshot.
 
 ## TECHNICAL INTERFACE (The Bridge)
-- **Channel Pattern:** `private-user.*`
+- **Stream:** `GET /api/v1/events`
 - **Code Tag:** `@spec-link [[api_websocket_arena_updates]]`
-- **Laravel Event:** `App\Events\BoardUpdated`
-- **Pseudonym:** Uses the `ws_channel_key` mapped to the User ID.
+- **Server:** `upsilonhub/internal/gateway/sse` (masking + fan-out), fed by the engine webhook (`/api/webhook/upsilon`)
 
 ## EXPECTATION (For Testing)
-- Game Action processed -> Engine Webhook hits BattleUI -> `board.updated` broadcasted.
-- Client on match page -> Subscribed to `private-arena.{id}` -> Board state updates without refresh.
+- Game Action processed -> Engine Webhook hits the hub -> `board.updated` framed per participant.
+- Client on match page -> listening on its stream -> Board state updates without refresh.

@@ -8,7 +8,7 @@ status: STABLE
 priority: 4
 tags: [pve, balance, gameplay]
 parents:
-  - [[battleui:req_ui_look_and_feel]]
+  - [[upsilonbattleui:req_ui_look_and_feel]]
 dependents: []
 ---
 

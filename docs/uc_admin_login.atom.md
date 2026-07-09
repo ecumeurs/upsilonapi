@@ -12,7 +12,7 @@ parents:
   - [[rule_admin_access_restriction]]
   - [[shared:req_admin_experience]]
 dependents:
-  - [[battleui:ui_admin_dashboard]]
+  - [[upsilonbattleui:ui_admin_dashboard]]
 ---
 
 # Admin Login Use Case

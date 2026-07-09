@@ -136,22 +136,23 @@ func HandleGetActiveMatchStats(c *gin.Context) {
 
 // HandleArenaResurrect rebuilds a crashed arena from a persisted state dump.
 func HandleArenaResurrect(c *gin.Context) {
-	// 1. Request Parsing: Validate the match ID and the full state body from the request.
+	// 1. Request Parsing: Validate the match ID and the enveloped state body,
+	// like every other arena endpoint ([[api_standard_envelope]]).
 	matchID, _ := uuid.Parse(c.Param("id"))
-	var req api.ArenaResurrectRequest
+	var req api.ArenaResurrectMessage
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
 		return
 	}
-	req.MatchID = matchID.String()
+	req.Data.MatchID = matchID.String()
 	// 2. State Hydration: Reconstruct the engine's in-memory structures from the provided DTO.
-	bs, err := bridge.Get().ResurrectArena(req)
+	bs, err := bridge.Get().ResurrectArena(req.Data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, api.NewError("", err.Error()))
+		c.JSON(http.StatusBadRequest, api.NewError(req.RequestID, err.Error()))
 		return
 	}
 	// 3. Response: Acknowledge restoration with the current engine state view for resumption.
-	c.JSON(http.StatusOK, api.NewSuccess("", "Arena resurrected", api.ArenaStartResponse{
+	c.JSON(http.StatusOK, api.NewSuccess(req.RequestID, "Arena resurrected", api.ArenaStartResponse{
 		ArenaID: matchID.String(), InitialState: bs,
 	}))
 }

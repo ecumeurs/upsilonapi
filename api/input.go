@@ -235,3 +235,4 @@ type ResurrectTurn struct {
 type ArenaActionMessage = stdmessage.StandardMessage[ArenaActionRequest, stdmessage.MetaNil]
 type ArenaStartMessage = stdmessage.StandardMessage[ArenaStartRequest, stdmessage.MetaNil]
 type ArenaForfeitMessage = stdmessage.StandardMessage[ArenaForfeitRequest, stdmessage.MetaNil]
+type ArenaResurrectMessage = stdmessage.StandardMessage[ArenaResurrectRequest, stdmessage.MetaNil]
