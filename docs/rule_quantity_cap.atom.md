@@ -25,9 +25,9 @@ To bound `player_inventory.quantity` to a maximum of 99 units per item per user,
 - **V2.0 UX implication:** since the catalog is 3 items and most uses are 1× per item, the cap is rarely hit in practice; it's a guardrail.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[rule_quantity_cap]]`
-- **Service:** `App\Services\ShopService::purchase`
-- **Test Names:** `TestPurchase_QuantityCap99`
+- **Code Tag:** `@spec-link [[upsilonapi:rule_quantity_cap]]` — `upsilonhub/internal/platform/economy/pg_inventory.go` (`Purchase`, the `newQuantity > QuantityCap` guard).
+- **Service:** `Purchase` (Go port of `ShopService::purchase`).
+- **Test Names:** `TestPurchaseRejectsQuantityCap` (`upsilonhub/internal/gateway/shop_test.go`); CLI edge coverage in `edge_quantity_cap_99.js`.
 
 ## EXPECTATION
 - Purchasing the 100th unit of any item returns 422.

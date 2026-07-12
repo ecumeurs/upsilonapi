@@ -42,7 +42,8 @@ To provide API endpoints for character equipment management: viewing the 3-slot 
 **Unequip Item:**
 - **Endpoint:** `DELETE /api/v1/profile/character/{id}/unequip/{slot}` where `slot ∈ {armor, utility, weapon}`.
 - **Auth:** Sanctum + ownership policy.
-- **Behavior:** If the slot is empty, returns 404. Otherwise clears the slot and returns the updated `CharacterEquipmentResource`.
+- **Validation:** `{slot}` is checked against the fixed set `{armor, utility, weapon}` before any lookup runs; any other value (e.g. a typo or a slot name from a different mechanic) returns 422 with `meta.reason: "invalid_slot"`.
+- **Behavior:** If the slot is valid but empty, returns 404. Otherwise clears the slot and returns the updated `CharacterEquipmentResource`.
 
 **Stat Recalculation:**
 - Equipment changes do not mutate base character columns. The engine resolves equipment contributions at battle init via Forever buffs (see `mech_item_buff_application`). The dashboard composes effective stats client-side via the equipment summary in `CharacterResource`.

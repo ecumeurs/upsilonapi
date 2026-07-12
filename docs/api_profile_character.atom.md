@@ -59,3 +59,4 @@ To view and modify character entities, including statistical progression and cos
 - Upgrading beyond available points (wins) -> Return 400 Bad Request.
 - Upgrading that violates [[shared:rule_progression]] (e.g., movement limit) -> Return 400 Bad Request.
 - Rerolling after account is "Stable" -> Return 403 Forbidden.
+- Requesting character detail (or any `{characterId}` action) with a malformed, non-UUID `characterId` -> No format pre-check exists; the parse failure panics and is rendered as a 500 Internal Server Error (`invalid UUID length: N` / debug-prefixed), matching the legacy PHP QueryException byte-for-byte. This is intentionally NOT a 4xx validation error.
