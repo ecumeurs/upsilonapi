@@ -10,7 +10,10 @@ WORKDIR /app
 # Copy go.work and module files for caching
 COPY go.work go.work.sum ./
 COPY upsilonapi/go.mod upsilonapi/go.su[m] ./upsilonapi/
+COPY upsilonauth/go.mod upsilonauth/go.su[m] ./upsilonauth/
 COPY upsilonbattle/go.mod upsilonbattle/go.su[m] ./upsilonbattle/
+COPY upsiloneconomy/go.mod upsiloneconomy/go.su[m] ./upsiloneconomy/
+COPY upsilonplatform/go.mod upsilonplatform/go.su[m] ./upsilonplatform/
 COPY upsiloncli/go.mod upsiloncli/go.su[m] ./upsiloncli/
 COPY upsilonhub/go.mod upsilonhub/go.su[m] ./upsilonhub/
 COPY upsilonmapdata/go.mod upsilonmapdata/go.su[m] ./upsilonmapdata/
