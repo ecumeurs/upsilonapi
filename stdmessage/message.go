@@ -1,7 +1,6 @@
 // Package stdmessage defines the universal communication envelope for all Upsilon Hub services.
 // It ensures that every API response follows a consistent structural contract.
 // @spec-link [[api_standard_envelope]]
-// @spec-link [[rule_dto_strict_typing]]
 package stdmessage
 
 import (

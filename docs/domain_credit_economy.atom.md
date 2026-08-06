@@ -15,6 +15,9 @@ dependents:
   - [[rule_starting_credits_1000]]
   - [[upsilonbattle:rule_credit_earning]]
   - [[upsilontypes:entity_shop_item]]
+  - [[upsilontypes:mech_entity_properties]]
+  - [[upsilontypes:mechanic_effect_caster_tracking]]
+  - [[upsilontypes:rule_item_pricing_simple]]
 ---
 
 # Credit Economy Domain

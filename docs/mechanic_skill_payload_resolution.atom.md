@@ -5,7 +5,7 @@ human_name: "Skill Payload Resolution & Normalization"
 layer: IMPLEMENTATION
 tags: ["api","serialization","resilience"]
 parents:
-  - [[shared:rule_dto_strict_typing]]
+  - [[shared:requirement_customer_api_first]]
 type: MECHANIC
 priority: 2
 version: 1.0

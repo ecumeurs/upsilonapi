@@ -6,8 +6,7 @@ layer: BUSINESS
 version: 1.0
 priority: 1
 tags: [governance, vision, api]
-parents:
-  - [[shared:vision_upsilon_vision]]
+parents: []
 human_name: UpsilonAPI Vision
 dependents: []
 ---

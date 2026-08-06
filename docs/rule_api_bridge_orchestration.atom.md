@@ -3,13 +3,13 @@ id: rule_api_bridge_orchestration
 status: DRAFT
 priority: 2
 parents:
-  - [[contract_api_contract]]
+  - [[domain_upsilon_engine]]
 type: RULE
 version: 1.0
 tags: [api,bridge,orchestration]
 dependents: []
 human_name: "API Bridge Orchestration"
-layer: BUSINESS
+layer: ARCHITECTURE
 ---
 
 # API Bridge Orchestration

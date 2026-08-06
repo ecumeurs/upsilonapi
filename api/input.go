@@ -8,8 +8,6 @@ import (
 	"github.com/ecumeurs/upsilonapi/stdmessage"
 )
 
-// @spec-link [[rule_dto_strict_typing]]
-
 // Flex handles inconsistent JSON from external systems (e.g. Laravel)
 // where an empty object might be represented as an empty array [].
 // This is critical for maintaining compatibility with PHP-to-Go JSON serialization quirks.

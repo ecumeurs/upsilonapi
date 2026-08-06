@@ -1,7 +1,6 @@
 package bridge
 
 // @spec-link [[mechanic_mec_skill_payload_resolution]]
-// @spec-link [[rule_dto_strict_typing]]
 
 import (
 	"github.com/ecumeurs/upsilonapi/api"

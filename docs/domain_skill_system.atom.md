@@ -9,7 +9,10 @@ priority: 5
 tags: [combat, skills, abilities]
 parents:
   - [[domain_upsilon_engine]]
-dependents: []
+dependents:
+  - [[upsilonbattle:mech_movement_reposition]]
+  - [[upsilontypes:mech_entity_properties]]
+  - [[upsilontypes:mech_positional_effects]]
 ---
 # Entity Skill System Domain
 

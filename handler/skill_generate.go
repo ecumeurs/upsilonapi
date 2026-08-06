@@ -13,12 +13,11 @@ import (
 
 // HandleSkillGenerate generates a random balanced skill and returns its full JSON representation.
 // @spec-link [[api_skill_generation]]
-// @spec-link [[rule_dto_strict_typing]]
 func HandleSkillGenerate(c *gin.Context) {
 	// Initialize the generation request with default values.
 	var req skillgenerator.GenerateRequest
 	// BindJSON is optional; if body is empty, req remains at default (Grade I, all tags).
-	// This follows the [[rule_dto_strict_typing]] by ensuring input is bound to a concrete struct.
+	// This follows CODING_RULE.md §4 by ensuring input is bound to a concrete struct.
 	_ = c.ShouldBindJSON(&req)
 
 	// Invoke the core generator logic to produce a balanced skill and its associated tags.
@@ -91,7 +90,7 @@ func serializePropertySlice(props []property.Property) api.PropertyMap {
 }
 
 // serializeProperty transforms a single engine property into an api.PropertyDTO.
-// It handles counters and primitives, maintaining type safety for the [[rule_dto_strict_typing]].
+// It handles counters and primitives, maintaining type safety per CODING_RULE.md §4.
 func serializeProperty(p property.Property) api.PropertyDTO {
 	// Initialize an empty DTO to hold the extracted property data.
 	dto := api.PropertyDTO{}

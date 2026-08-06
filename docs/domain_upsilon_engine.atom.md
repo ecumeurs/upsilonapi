@@ -12,6 +12,7 @@ parents:
 dependents:
   - [[domain_credit_economy]]
   - [[domain_skill_system]]
+  - [[rule_api_bridge_orchestration]]
   - [[upsilonbattle:mechanic_backstab_detection_algorithm]]
   - [[upsilonbattle:module_actor_concurrency]]
 ---
