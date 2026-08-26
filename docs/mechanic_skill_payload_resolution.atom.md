@@ -1,6 +1,6 @@
 ---
 id: mechanic_skill_payload_resolution
-status: DRAFT
+status: REVIEW
 human_name: "Skill Payload Resolution & Normalization"
 layer: IMPLEMENTATION
 tags: ["api","serialization","resilience"]
