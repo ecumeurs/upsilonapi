@@ -50,3 +50,6 @@ To initialize a new battle arena instance with players, entities, and map data.
 ## EXPECTATION (For Testing)
 - Valid `ArenaStartRequest` -> Returns `200 OK` with `ArenaStartResponse`.
 - Invalid JSON or missing required fields -> Returns `400 Bad Request` with `Success: false`.
+- A well-formed request that the engine rejects on rule grounds (e.g. a skill payload carrying an unrecognized or malformed property shape) -> Returns a non-2xx status carrying a well-formed envelope with `Success: false`. This is a rule rejection, not a transport error: callers MUST treat `Success: false` as failure regardless of HTTP status, MUST NOT create or cache any arena state from the response, and MUST NOT infer success merely from the absence of a network/decode error.
+
+**Prior wording (superseded 2026-08-24, ISS-131):** the EXPECTATION section previously covered only the two bullets above (valid request / malformed request) and said nothing about the engine-rule-rejection-with-valid-envelope case — a well-formed request the engine refuses for rule reasons (not a request-shape problem). That gap let a caller check only the transport-level error and never inspect `Success`, which is exactly how ISS-131's phantom-match bug happened.

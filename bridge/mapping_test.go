@@ -1,7 +1,7 @@
 // Package bridge provides unit tests for the bidirectional mapping between API DTOs and engine properties.
 // It ensures that complex effects and zones are correctly preserved during match initialization.
 // @test-link [[api_go_battle_engine]]
-// @test-link [[mechanic_mec_skill_payload_resolution]]
+// @test-link [[mechanic_skill_payload_resolution]]
 package bridge
 
 import (

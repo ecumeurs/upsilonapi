@@ -1,6 +1,6 @@
 package bridge
 
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @spec-link [[mechanic_skill_payload_resolution]]
 
 import (
 	"github.com/ecumeurs/upsilonapi/api"
@@ -18,7 +18,7 @@ var propertyAliasMap = map[string]string{
 // parseBehaviorType converts the wire string to a def.BehaviorType.
 // It defaults to Direct if the behavior is unknown or unspecified.
 // This mapping ensures compatibility with the unified skill behavioral model.
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @spec-link [[mechanic_skill_payload_resolution]]
 func parseBehaviorType(s string) def.BehaviorType {
 	// Match the incoming string to the engine's internal BehaviorType enum.
 	// We handle Direct, Reaction, Passive, Counter, and Trap types.

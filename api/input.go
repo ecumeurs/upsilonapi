@@ -32,7 +32,7 @@ func (f *Flex[T]) UnmarshalJSON(data []byte) error {
 
 // PropertyDTO represents a single property value in a strictly typed manner.
 // It supports integers (with optional max for counters), floats, booleans, and strings.
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @spec-link [[mechanic_skill_payload_resolution]]
 type PropertyDTO struct {
 	Value  *int     `json:"value,omitempty"`
 	FValue *float64 `json:"fvalue,omitempty"`

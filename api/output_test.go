@@ -1,7 +1,7 @@
 // Package api provides unit tests for the board state generation and DTO output mapping.
 // It ensures that complex engine structures are correctly projected into API-facing snapshots.
 // @test-link [[api_go_battle_engine]]
-// @test-link [[mechanic_mec_skill_payload_resolution]]
+// @test-link [[mechanic_skill_payload_resolution]]
 package api
 
 import (

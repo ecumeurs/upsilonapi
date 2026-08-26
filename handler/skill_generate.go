@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ecumeurs/upsilonapi/api"
@@ -66,7 +67,7 @@ func behaviorName(bt def.BehaviorType) string {
 }
 
 // serializePropertyMap transforms a map of engine properties into a serializable api.PropertyMap.
-// It ensures that properties are mapped to the correct DTO format as per [[mechanic_mec_skill_payload_resolution]].
+// It ensures that properties are mapped to the correct DTO format as per [[mechanic_skill_payload_resolution]].
 func serializePropertyMap(props map[string]property.Property) api.PropertyMap {
 	// Pre-allocate the output map with the required capacity.
 	out := make(api.PropertyMap, len(props))
@@ -90,7 +91,16 @@ func serializePropertySlice(props []property.Property) api.PropertyMap {
 }
 
 // serializeProperty transforms a single engine property into an api.PropertyDTO.
-// It handles counters and primitives, maintaining type safety per CODING_RULE.md §4.
+// It is total across every property.Property implementation reachable from
+// upsilontypes/property: IntCounterProperty maps to Value+Max, primitive Get()
+// results (int/float64/bool/string) map onto their matching DTO field, and the
+// Zone-typed property (whose Get() returns itself, not a primitive) maps onto
+// SValue via its PatternType. Any property type with no defined mapping panics,
+// naming the concrete Go type, per CODING_RULE.md §3 (crash early): a
+// generation-time panic here is strictly better than letting an unmapped
+// property degrade to an empty {} DTO, which PropertyDTO.UnmarshalJSON later
+// rejects at battle start (ISS-131).
+// @spec-link [[mechanic_skill_payload_resolution]]
 func serializeProperty(p property.Property) api.PropertyDTO {
 	// Initialize an empty DTO to hold the extracted property data.
 	dto := api.PropertyDTO{}
@@ -103,16 +113,42 @@ func serializeProperty(p property.Property) api.PropertyDTO {
 		dto.Max = &max
 		return dto
 	}
+	// Zone-typed properties are not primitives: Get() returns the ZoneProperty
+	// itself (def.ZoneProperty.Get). Serialize its PatternType instead — the
+	// field commit cd75926 added expressly for this purpose.
+	if zp, ok := p.(*def.ZoneProperty); ok {
+		pt := zp.PatternType
+		dto.SValue = &pt
+		return dto
+	}
+	// EffectProperty.Get() returns the nested *effect.Effect struct (Properties,
+	// Name, CasterID). Nothing on PropertyDTO honestly represents that shape:
+	// stuffing e.g. the effect's Name into SValue would silently drop its
+	// Properties and CasterID, trading one silent failure for another. Until the
+	// wire format grows a real representation for nested effects, fail loudly
+	// and specifically here instead of inventing a lossy encoding.
+	if _, ok := p.(*def.EffectProperty); ok {
+		panic(fmt.Sprintf("serializeProperty: EffectProperty has no defined wire mapping (property %q) — extend api.PropertyDTO before serializing nested effects", p.Name(property.GameMaster)))
+	}
 	// Fallback to generic property extraction for simple types.
 	val := p.Get()
 	// Polymorphic type mapping to DTO fields.
-	// We handle integers, booleans, and strings to cover the core engine types.
-	if i, ok := val.(int); ok {
-		dto.Value = &i
-	} else if b, ok := val.(bool); ok {
-		dto.BValue = &b
-	} else if s, ok := val.(string); ok {
-		dto.SValue = &s
+	// We handle integers, floats, booleans, and strings to cover the core engine types.
+	switch v := val.(type) {
+	case int:
+		dto.Value = &v
+	case float64:
+		dto.FValue = &v
+	case bool:
+		dto.BValue = &v
+	case string:
+		dto.SValue = &v
+	default:
+		// Crash early (CODING_RULE.md §3): an unrecognized property type must
+		// never silently serialize to an empty {} DTO — that shape is rejected
+		// downstream by PropertyDTO.UnmarshalJSON, turning this into a much
+		// later, harder-to-diagnose bind failure at battle start.
+		panic(fmt.Sprintf("serializeProperty: unrecognized property type %T for property %q", val, p.Name(property.GameMaster)))
 	}
 	// Return the populated DTO for JSON serialization.
 	return dto

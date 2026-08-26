@@ -1,7 +1,7 @@
 // Package bridge provides internal test infrastructure and factory helpers for the UpsilonAPI.
 // These helpers streamline the creation of complex test payloads for bridge-level validation.
 // @test-link [[api_go_battle_engine]]
-// @test-link [[mechanic_mec_skill_payload_resolution]]
+// @test-link [[mechanic_skill_payload_resolution]]
 package bridge
 
 import (

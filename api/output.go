@@ -20,7 +20,7 @@ import (
 )
 
 // @spec-link [[api_go_battle_engine]]
-// @spec-link [[mechanic_mec_skill_payload_resolution]]
+// @spec-link [[mechanic_skill_payload_resolution]]
 
 // ArenaActionResponse is the payload returned by POST /v1/matches/{id}/actions.
 type ArenaActionResponse struct {
