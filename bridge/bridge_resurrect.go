@@ -3,6 +3,7 @@
 package bridge
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -10,19 +11,19 @@ import (
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonbattle/battlearena"
 	"github.com/ecumeurs/upsilonbattle/battlearena/controller/controllers"
-	"github.com/ecumeurs/upsilontypes/entity"
-	"github.com/ecumeurs/upsilontypes/entity/skill"
+	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
+	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
+	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
 	"github.com/ecumeurs/upsilonmapdata/grid"
 	"github.com/ecumeurs/upsilonmapdata/grid/cell"
 	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/ecumeurs/upsilonserializer"
-	"github.com/ecumeurs/upsilontypes/property"
-	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/ecumeurs/upsilontools/tools/actor"
 	"github.com/ecumeurs/upsilontools/tools/messagequeue/message"
-	"github.com/ecumeurs/upsilonbattle/battlearena/ruler"
-	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
-	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
+	"github.com/ecumeurs/upsilontypes/entity"
+	"github.com/ecumeurs/upsilontypes/entity/skill"
+	"github.com/ecumeurs/upsilontypes/property"
+	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +34,9 @@ import (
 func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardState, error) {
 	// 1. Validation: Ensure all mandatory identifiers and rosters are present.
 	matchID, err := validateResurrectRequest(req)
-	if err != nil { return api.BoardState{}, err }
+	if err != nil {
+		return api.BoardState{}, err
+	}
 	// 2. Idempotency: Reject recovery if the match is already active in memory.
 	if b.isArenaActive(matchID) {
 		return api.BoardState{}, fmt.Errorf("arena %s is already running — resurrection not needed", matchID)
@@ -42,13 +45,17 @@ func (b *ArenaBridge) ResurrectArena(req api.ArenaResurrectRequest) (api.BoardSt
 	//    version is absent (zero) or does not match the current engine schema.
 	//    A mismatch indicates a stale or incompatible blob that would silently
 	//    mis-deserialize engine state (audit risk R7 / WP-D2).
-	if err := validateSerializerVersion(req.SerializerVersion); err != nil { return api.BoardState{}, err }
+	if err := validateSerializerVersion(req.SerializerVersion); err != nil {
+		return api.BoardState{}, err
+	}
 	// 4. Grid Reconstruction: Rebuild the 3D engine grid from the 2D serialized projection.
 	g := resurrectGrid(req.Grid)
 	// 5. Arena Setup: Initialize the core BattleArena container and its metadata.
 	battleArena := b.initResurrectedArena(matchID, g, req)
 	// 6. Entity Restoration: Hydrate the engine with saved characters, stats, and buffs.
-	if err := b.restoreEntities(battleArena, req); err != nil { return api.BoardState{}, err }
+	if err := b.restoreEntities(battleArena, req); err != nil {
+		return api.BoardState{}, err
+	}
 	// 7. State Recovery: Restore the initiative timeline and versioning metadata.
 	currentEntityID := b.restoreEngineState(battleArena, req)
 	// 8. Lifecycle: Start the Ruler actor so it can process controller registrations.
@@ -87,13 +94,21 @@ func validateSerializerVersion(found int) error {
 // validateResurrectRequest checks for missing fields and malformed UUIDs.
 func validateResurrectRequest(req api.ArenaResurrectRequest) (uuid.UUID, error) {
 	// 1. ID Verification: Ensure match_id exists and is a valid UUID string.
-	if req.MatchID == "" { return uuid.Nil, fmt.Errorf("mandatory field match_id is missing") }
+	if req.MatchID == "" {
+		return uuid.Nil, fmt.Errorf("mandatory field match_id is missing")
+	}
 	matchID, err := uuid.Parse(req.MatchID)
-	if err != nil { return uuid.Nil, fmt.Errorf("invalid match_id format: %w", err) }
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid match_id format: %w", err)
+	}
 	// 2. Target Routing: Verify that a callback URL is provided for event delivery.
-	if req.CallbackURL == "" { return uuid.Nil, fmt.Errorf("mandatory field callback_url is missing") }
+	if req.CallbackURL == "" {
+		return uuid.Nil, fmt.Errorf("mandatory field callback_url is missing")
+	}
 	// 3. Roster Check: Resurrection requires at least one participating player.
-	if len(req.Players) == 0 { return uuid.Nil, fmt.Errorf("arena roster must not be empty") }
+	if len(req.Players) == 0 {
+		return uuid.Nil, fmt.Errorf("arena roster must not be empty")
+	}
 	return matchID, nil
 }
 
@@ -127,10 +142,14 @@ func (b *ArenaBridge) restoreEntities(ba *battlearena.BattleArena, req api.Arena
 		pID, _ := uuid.Parse(p.ID)
 		for _, ee := range p.Entities {
 			// 2. Vitality: Only resurrect entities that have positive HP and are not dead.
-			if ee.Dead || ee.HP <= 0 { continue }
+			if ee.Dead || ee.HP <= 0 {
+				continue
+			}
 			// 3. Conversion: Map the DTO back into the engine's internal Entity model.
 			ent, err := b.dtoToEntity(pID, ee, p.Team, ba.Ruler.GameState.Grid)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			// 4. Registration: Push the hydrated entity into the Ruler state.
 			ba.Ruler.AddEntity(ent)
 		}
@@ -142,7 +161,9 @@ func (b *ArenaBridge) restoreEntities(ba *battlearena.BattleArena, req api.Arena
 func (b *ArenaBridge) dtoToEntity(pID uuid.UUID, ee api.Entity, team int, g *grid.Grid) (entity.Entity, error) {
 	// 1. Core: Initialize internal Entity with base stats and calculated height-position.
 	entID, err := uuid.Parse(ee.ID)
-	if err != nil { return entity.Entity{}, err }
+	if err != nil {
+		return entity.Entity{}, err
+	}
 	e := entity.Entity{
 		ID: entID, Type: entity.Character, Name: ee.Name, ControllerID: pID,
 		Properties: make(map[string]property.Property), Skills: make(map[uuid.UUID]skill.Skill),
@@ -156,65 +177,90 @@ func (b *ArenaBridge) dtoToEntity(pID uuid.UUID, ee api.Entity, team int, g *gri
 	e.RepsertPropertyValue(property.Attack, ee.Attack)
 	e.RepsertPropertyValue(property.Defense, ee.Defense)
 	e.RepsertPropertyValue(property.TeamID, team)
-	// 3. Accessories: Hydrate buffs and skills for the entity.
-	b.restoreEntityBuffs(&e, ee.Buffs)
-	b.restoreEntitySkills(&e, ee.EquippedSkills)
-	return e, nil
+	// 3. Accessories: Hydrate buffs and skills for the entity, collecting rejected property
+	// keys from both rather than aborting on the first (ISS-140 collect-all).
+	errBuffs := b.restoreEntityBuffs(&e, ee.Buffs)
+	errSkills := b.restoreEntitySkills(&e, ee.EquippedSkills)
+	return e, errors.Join(errBuffs, errSkills)
 }
 
 // restoreEntityBuffs re-injects saved buffs into an entity during resurrection.
-func (b *ArenaBridge) restoreEntityBuffs(e *entity.Entity, buffs []api.Buff) {
+func (b *ArenaBridge) restoreEntityBuffs(e *entity.Entity, buffs []api.Buff) error {
 	// 1. Buff Hydration: Iterate through every saved status effect.
-	for _, b := range buffs {
-		originID, err := uuid.Parse(b.OriginID)
-		if err != nil { continue }
+	var errs []error
+	for _, buf := range buffs {
+		originID, err := uuid.Parse(buf.OriginID)
+		if err != nil {
+			continue
+		}
 		buff := property.TemporaryProperties{
-			Forever: b.Forever, OriginEntityID: originID, Properties: make(map[string]property.Property),
+			Forever: buf.Forever, OriginEntityID: originID, Properties: make(map[string]property.Property),
 		}
 		// 2. Property Mapping: Resolve each buffered property back to its engine type.
-		for key, dto := range b.Properties.Data {
-			hydrateSingleBuffProperty(key, dto, &buff)
+		for key, dto := range buf.Properties.Data {
+			if err := hydrateSingleBuffProperty(key, dto, &buff); err != nil {
+				errs = append(errs, err)
+			}
 		}
 		e.RegisterBuff(buff)
 	}
+	return errors.Join(errs...)
 }
 
-// hydrateSingleBuffProperty performs the individual property resolution for a buff.
-func hydrateSingleBuffProperty(key string, dto api.PropertyDTO, buff *property.TemporaryProperties) {
-	// 1. Alias Resolution: Check for property naming consistency.
-	effectiveKey := key
-	if alias, ok := propertyAliasMap[effectiveKey]; ok { effectiveKey = alias }
-	// 2. Definition Lookup: Identify if property belongs to Item or Entity family.
-	var p property.Property
-	if prop := def.ItemProperty(property.ItemProperties(effectiveKey)); prop != nil {
-		p = prop
-	} else if prop := def.EntityProperty(property.EntityProperties(effectiveKey)); prop != nil {
-		p = prop
+// hydrateSingleBuffProperty performs the individual property resolution for a buff. A persisted
+// buff always originated as an item buff (applyItemAsBuff), so the key is resolved scoped to
+// Item only (ISS-147): it must never fall through to the Entity resolver and reinterpret an
+// Entity-only key (e.g. "Poison") as a real status-effect buff. A rejected key is returned as an
+// error rather than silently dropped (ISS-140).
+func hydrateSingleBuffProperty(key string, dto api.PropertyDTO, buff *property.TemporaryProperties) error {
+	entry, p, err := resolveScopedProperty(key, def.ScopeItem)
+	if err != nil {
+		return err
 	}
-	// 3. Hydration: If valid, set the value and register in the buff container.
-	if p != nil && setSkillPropValue(p, dto) {
-		buff.Properties[property.PropertyToString(effectiveKey)] = p
+	applied, err := setSkillPropValue(p, dto, entry.Key)
+	if err != nil {
+		return fmt.Errorf("%s: %w", key, err)
 	}
+	if applied {
+		buff.Properties[entry.Key.String()] = p
+	}
+	return nil
 }
 
 // restoreEntitySkills populates an entity's skill map from the resurrection payload.
-func (b *ArenaBridge) restoreEntitySkills(e *entity.Entity, skills []api.EquippedSkill) {
+func (b *ArenaBridge) restoreEntitySkills(e *entity.Entity, skills []api.EquippedSkill) error {
 	// 1. Skill Hydration: Map every tactical ability back into the entity registry.
+	var errs []error
 	for _, es := range skills {
 		skillID, err := uuid.Parse(es.SkillID)
-		if err != nil { continue }
+		if err != nil {
+			continue
+		}
 		// 2. Behavior Config: Reconstruct the behavior and targeting logic.
 		bh := def.DefaultBehavior()
 		bh.SetS(string(parseBehaviorType(es.Behavior)))
+		targeting, errT := buildSkillPropertyMap(es.Targeting.Data)
+		costs, errC := buildSkillPropertyMap(es.Costs.Data)
+		eff, errE := buildSkillEffect(es.Effect.Data)
 		s := skill.Skill{
 			ID: skillID, Name: es.Name, Behavior: bh,
-			Targeting: buildSkillPropertyMap(es.Targeting.Data),
-			Costs:     buildSkillPropertyMap(es.Costs.Data),
-			Effect:    buildSkillEffect(es.Effect.Data),
+			Targeting: targeting,
+			Costs:     costs,
+			Effect:    eff,
 		}
 		// 3. Registration: Inject into engine state.
 		e.RegisterSkill(s)
+		if errT != nil {
+			errs = append(errs, fmt.Errorf("skill %q targeting: %w", es.Name, errT))
+		}
+		if errC != nil {
+			errs = append(errs, fmt.Errorf("skill %q costs: %w", es.Name, errC))
+		}
+		if errE != nil {
+			errs = append(errs, fmt.Errorf("skill %q effect: %w", es.Name, errE))
+		}
 	}
+	return errors.Join(errs...)
 }
 
 // restoreEngineState recovers the initiative timeline and current turn pointers.
@@ -223,12 +269,16 @@ func (b *ArenaBridge) restoreEngineState(ba *battlearena.BattleArena, req api.Ar
 	var turnerTurns []turner.EntityTurn
 	for _, t := range req.Turns {
 		entID, err := uuid.Parse(t.EntityID)
-		if err != nil { continue }
+		if err != nil {
+			continue
+		}
 		turnerTurns = append(turnerTurns, turner.EntityTurn{EntityId: entID, Delay: t.Delay})
 	}
 	// 2. Pointer Resolution: Identify the current acting entity and versioning.
 	currentEntityID := uuid.Nil
-	if req.CurrentEntityID != "" { currentEntityID, _ = uuid.Parse(req.CurrentEntityID) }
+	if req.CurrentEntityID != "" {
+		currentEntityID, _ = uuid.Parse(req.CurrentEntityID)
+	}
 	// 3. Hydration: Push the initiative state into the Ruler.
 	ba.Ruler.Resurrect(turnerTurns, currentEntityID, req.Version)
 	return currentEntityID
@@ -239,7 +289,9 @@ func (b *ArenaBridge) reconnectControllers(ba *battlearena.BattleArena, matchID 
 	// 1. Human Players: Identify represented player IDs for the shared proxy.
 	var humanIDs []uuid.UUID
 	for _, p := range req.Players {
-		if !p.IA { humanIDs = append(humanIDs, uuid.MustParse(p.ID)) }
+		if !p.IA {
+			humanIDs = append(humanIDs, uuid.MustParse(p.ID))
+		}
 	}
 	// 2. Proxy Initialization: Re-create the HTTPController for web callbacks.
 	var sharedHC *HTTPController
@@ -300,7 +352,9 @@ func (b *ArenaBridge) registerAndHandOff(matchID uuid.UUID, ba *battlearena.Batt
 func (b *ArenaBridge) buildResurrectionBoardState(matchID uuid.UUID, ba *battlearena.BattleArena, req api.ArenaResurrectRequest) api.BoardState {
 	// 1. Entity Extraction: Gather current engine entity snapshots.
 	entities := make([]entity.Entity, 0, len(ba.Ruler.GameState.Entities))
-	for _, v := range ba.Ruler.GameState.Entities { entities = append(entities, v) }
+	for _, v := range ba.Ruler.GameState.Entities {
+		entities = append(entities, v)
+	}
 	// 2. Projection: Build the API-standard BoardState snapshot.
 	return api.NewBoardState(
 		matchID, ba.Ruler.GameState.Grid, entities, req.Players,
@@ -341,6 +395,8 @@ func resurrectGridColumn(g *grid.Grid, rg api.ResurrectGrid, x int, y int) {
 	// 3. Playable Tile: Place Ground or Obstacle cell at the target Z.
 	pos := position.New(x, y, surfaceZ)
 	cellType := cell.Ground
-	if isObstacle { cellType = cell.Obstacle }
+	if isObstacle {
+		cellType = cell.Obstacle
+	}
 	g.Cells[pos] = cell.NewCell(cellType, pos)
 }

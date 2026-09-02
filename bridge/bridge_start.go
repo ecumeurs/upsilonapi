@@ -1,28 +1,28 @@
 package bridge
 
 // @spec-link [[rule_team_mechanics]]
-// @spec-link [[mechanic_item_buff_application]]
 // @spec-link [[api_character_skill_inventory]]
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/ecumeurs/upsilonapi/api"
 	"github.com/ecumeurs/upsilonbattle/battlearena"
-	"github.com/ecumeurs/upsilontypes/entity"
-	"github.com/ecumeurs/upsilontypes/entity/skill"
-	"github.com/ecumeurs/upsilonmapdata/grid"
-	"github.com/ecumeurs/upsilonmapdata/grid/position"
-	"github.com/ecumeurs/upsilontypes/property"
-	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/rulermethods"
 	"github.com/ecumeurs/upsilonbattle/battlearena/ruler/turner"
+	"github.com/ecumeurs/upsilonmapdata/grid"
+	"github.com/ecumeurs/upsilonmapdata/grid/position"
 	"github.com/ecumeurs/upsilonmapmaker/gridgenerator"
 	"github.com/ecumeurs/upsilontools/tools"
 	"github.com/ecumeurs/upsilontools/tools/actor"
 	"github.com/ecumeurs/upsilontools/tools/messagequeue/message"
+	"github.com/ecumeurs/upsilontypes/entity"
+	"github.com/ecumeurs/upsilontypes/entity/skill"
+	"github.com/ecumeurs/upsilontypes/property"
+	"github.com/ecumeurs/upsilontypes/property/def"
 	"github.com/google/uuid"
 )
 
@@ -177,23 +177,32 @@ func (b *ArenaBridge) addExplicitEntity(ba *battlearena.BattleArena, p api.Playe
 	e.RepsertPropertyValue(property.Defense, ee.Defense)
 	e.RepsertPropertyValue(property.TeamID, p.Team)
 
+	var errs []error
 	for _, item := range ee.EquippedItems {
-		b.applyItemAsBuff(&e, item)
+		if err := b.applyItemAsBuff(&e, item); err != nil {
+			errs = append(errs, fmt.Errorf("entity %q item %q: %w", ee.Name, item.Name, err))
+		}
 	}
 	for _, es := range ee.EquippedSkills {
-		b.registerEntitySkill(&e, es)
+		if err := b.registerEntitySkill(&e, es); err != nil {
+			errs = append(errs, fmt.Errorf("entity %q skill %q: %w", ee.Name, es.Name, err))
+		}
 	}
 	ba.Ruler.AddEntity(e)
-	return nil
+	return errors.Join(errs...)
 }
 
 // applyItemAsBuff converts an equipped item from the API into a permanent engine buff.
-// It maps item properties, effects, and zones into the entity's property set.
-func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) {
+// It maps item properties, effects, and zones into the entity's property set. Every property
+// key is resolved against the registry scoped to Item (ISS-147): an item can never resolve an
+// Entity-only key (e.g. "Poison") through a scope fallthrough, and any rejected key is
+// accumulated into the returned error rather than silently dropped (ISS-140, collect-all).
+// @spec-link [[mechanic_item_buff_application]]
+func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) error {
 	itemID, err := uuid.Parse(item.ItemID)
 	if err != nil {
 		log.Printf("[ArenaBridge] Skipping item %s: invalid UUID", item.Name)
-		return
+		return nil
 	}
 
 	buff := property.TemporaryProperties{
@@ -202,8 +211,12 @@ func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) {
 		Properties:     make(map[string]property.Property),
 	}
 
+	var errs []error
 	if len(item.Effect.Data) > 0 {
-		eff := buildSkillEffect(item.Effect.Data)
+		eff, err := buildSkillEffect(item.Effect.Data)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("effect: %w", err))
+		}
 		buff.Properties[property.PropertyToString(property.Effect)] = def.MakeEffectProperty(&eff, property.Analyser)
 	}
 	if item.Zone != nil {
@@ -213,40 +226,48 @@ func (b *ArenaBridge) applyItemAsBuff(e *entity.Entity, item api.EquippedItem) {
 	}
 
 	for key, dto := range item.Properties.Data {
-		effectiveKey := key
-		if alias, ok := propertyAliasMap[effectiveKey]; ok {
-			effectiveKey = alias
+		entry, p, err := resolveScopedProperty(key, def.ScopeItem)
+		if err != nil {
+			errs = append(errs, err)
+			continue
 		}
-		var p property.Property
-		if prop := def.ItemProperty(property.ItemProperties(effectiveKey)); prop != nil {
-			p = prop
-		} else if prop := def.EntityProperty(property.EntityProperties(effectiveKey)); prop != nil {
-			p = prop
+		applied, err := setSkillPropValue(p, dto, entry.Key)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", key, err))
+			continue
 		}
-		if p != nil && setSkillPropValue(p, dto) {
-			buff.Properties[property.PropertyToString(effectiveKey)] = p
+		if applied {
+			buff.Properties[entry.Key.String()] = p
 		}
 	}
 	e.RegisterBuff(buff)
+	return errors.Join(errs...)
 }
 
 // registerEntitySkill maps an equipped skill from the API into the engine's skill system.
-// It configures behavior, targeting, costs, and effects for the entity.
-func (b *ArenaBridge) registerEntitySkill(e *entity.Entity, es api.EquippedSkill) {
+// It configures behavior, targeting, costs, and effects for the entity. Targeting, Costs, and
+// Effect are each resolved independently; any rejected property key across the three is
+// accumulated into the returned error rather than silently dropped (ISS-140, collect-all).
+func (b *ArenaBridge) registerEntitySkill(e *entity.Entity, es api.EquippedSkill) error {
 	skillID, err := uuid.Parse(es.SkillID)
 	if err != nil {
 		log.Printf("[ArenaBridge] Skipping skill %s: invalid UUID", es.Name)
-		return
+		return nil
 	}
 	bh := def.DefaultBehavior()
 	bh.SetS(string(parseBehaviorType(es.Behavior)))
+
+	targeting, errT := buildSkillPropertyMap(es.Targeting.Data)
+	costs, errC := buildSkillPropertyMap(es.Costs.Data)
+	eff, errE := buildSkillEffect(es.Effect.Data)
+
 	s := skill.Skill{
 		ID:        skillID,
 		Name:      es.Name,
 		Behavior:  bh,
-		Targeting: buildSkillPropertyMap(es.Targeting.Data),
-		Costs:     buildSkillPropertyMap(es.Costs.Data),
-		Effect:    buildSkillEffect(es.Effect.Data),
+		Targeting: targeting,
+		Costs:     costs,
+		Effect:    eff,
 	}
 	if es.Zone != nil {
 		zp := def.DefaultZone()
@@ -254,6 +275,18 @@ func (b *ArenaBridge) registerEntitySkill(e *entity.Entity, es api.EquippedSkill
 		s.Targeting[property.PropertyToString(property.Zone)] = zp
 	}
 	e.RegisterSkill(s)
+
+	var errs []error
+	if errT != nil {
+		errs = append(errs, fmt.Errorf("targeting: %w", errT))
+	}
+	if errC != nil {
+		errs = append(errs, fmt.Errorf("costs: %w", errC))
+	}
+	if errE != nil {
+		errs = append(errs, fmt.Errorf("effect: %w", errE))
+	}
+	return errors.Join(errs...)
 }
 
 // setupControllers initializes and registers HTTP and IA controllers.

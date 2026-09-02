@@ -77,7 +77,7 @@ func TestSerializeProperty_RoundTrip(t *testing.T) {
 		},
 		{
 			name: "DefaultFloatProperty",
-			prop: defaultproperty.MakeFloatProperty(property.Damage, 12.5, property.Public, property.Skill),
+			prop: defaultproperty.MakeFloatProperty(property.DamageScale, 12.5, property.Public, property.Skill),
 			verify: func(t *testing.T, dto api.PropertyDTO) {
 				require.NotNil(t, dto.FValue)
 				require.Equal(t, 12.5, *dto.FValue)

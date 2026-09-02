@@ -28,7 +28,7 @@ func TestMapping_ZoneAndEffect(t *testing.T) {
 		{
 			SkillID: uuid.New().String(), Name: "Fireball", Behavior: "Zone",
 			Zone: &zoneName,
-			Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{property.Damage.String(): {Value: intPtr(10)}}},
+			Effect: api.Flex[api.PropertyMap]{Data: api.PropertyMap{property.DamageScale.String(): {Value: intPtr(10)}}},
 		},
 	}
 
@@ -50,7 +50,7 @@ func TestMapping_ZoneAndEffect(t *testing.T) {
 	// 4. Verification: Confirm the "Circle:3" zone and 'damage' effect were correctly mapped.
 	require.NotNil(t, engineSkill, "skill 'Fireball' must exist in the engine")
 	assert.Equal(t, "Circle:3", *engineSkill.Zone, "zone pattern must be preserved in the engine state")
-	assert.Equal(t, 10, *engineSkill.Effect.Data[property.Damage.String()].Value, "effect properties must be correctly serialized to the engine")
+	assert.Equal(t, 10, *engineSkill.Effect.Data[property.DamageScale.String()].Value, "effect properties must be correctly serialized to the engine")
 
 	b.DestroyArena(matchID)
 }
